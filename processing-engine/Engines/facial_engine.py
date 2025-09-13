@@ -2,30 +2,37 @@ import cv2
 from deepface import DeepFace
 import logging
 import threading
-import time
 from utils.buffer_parser import parse_buffer
 from collections import deque
+import math
 
 class FacialEngine:
-    def __init__(self, camera_index=0, action_config=None, safety_buffer_max_size=1, percentage=0.6):
+    def __init__(self, action_config, camera_index=0, safety_buffer_max_size=1, minimum_emotion_percentage=0.6, show_face_window=False):
         """
         Initialize the Facial Engine
         
         Args:
             camera_index (int): Camera index for video capture (default: 0)
         """
+
+        # attributes set by the caller of the class
+        self.show_face_window = show_face_window
         self.camera_index = camera_index
+        self.safety_buffer_max_size = safety_buffer_max_size
+        self.action_config = action_config # REQUIRED MUST BE SET BY THE CALLER
+        self.minimum_emotion_percentage = minimum_emotion_percentage # how much a buffer must include of a single event to definetly call that this event is happening
+
+        # internally set (hardcoded by the class)
         self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
         self.cap = None
         self.is_running = False
         self.detection_thread = None
-        self.window_name = 'Real-time Emotion Detection'
-        self.percentage = percentage
-        self.action_config = action_config if action_config is not None else {"banned_emotions": ["neutral"]}
-        self.fps = 30
-        self.safety_buffer_max_size = safety_buffer_max_size
-        self.safety_buffer = deque(maxlen=floor(self.safety_buffer_max_size*self.fps))
+        self.window_name = 'AEA Facial Engine'
+        self.write_to_collection = "facial_engine" # writes to this collection in the mongo data base
+        
+        # set by settings function for buffers
         # this is here as a buffer to store the emotions if it full with a certain emotion that means that the emotion is set really and not deviating from the goal
+        self.safety_buffer = deque(maxlen=math.floor(self.safety_buffer_max_size*self.fps))
                  
         # Detection parameters
         self.scale_factor = 1.1
@@ -110,6 +117,7 @@ class FacialEngine:
         Returns:
             Processed frame with emotion annotations
         """
+        # this gets the faces from open cv, I wonder if i could run this on the NPU?
         gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = self.face_cascade.detectMultiScale(
             gray_frame, 
@@ -117,19 +125,28 @@ class FacialEngine:
             minNeighbors=self.min_neighbors, 
             minSize=self.min_size
         )
-        
-        for (x, y, w, h) in faces:
-            # Extract face ROI from the original frame
+
+        # this emits the event that the user isn't there
+        if len(faces) == 0:
+            self.safety_buffer.append("missing") # means that the user isnt there
+        elif len(faces) > 1:
+            self.safety_buffer.append("multiple") # means multiple people are in the screen NOT GOOD
+        else:
+             # Extract face ROI from the original frame
+            # probably don't need this tbh, should have an option to show and not show
+            #for (x, y, w, h) in faces:
+            x, y, w, h = faces[0]
             face_roi = frame[y:y + h, x:x + w]
             
             try:
                 # Analyze emotion using DeepFace
+                # this model will have to be replaced with something else 
                 result = DeepFace.analyze(face_roi, actions=['emotion'], enforce_detection=False)
                 emotion = result[0]['dominant_emotion']
                 self.logger.info(f"Emotion: {emotion}")
                 self.safety_buffer.append(emotion)
                 confidence = result[0]['emotion'][emotion]
-                if parse_buffer(self.safety_buffer, self.percentage, self.safety_buffer_max_size) in self.action_config['banned_emotions']:
+                if parse_buffer(self.safety_buffer, self.minimum_emotion_percentage, self.safety_buffer_max_size) in self.action_config['banned_emotions']:
                     self.logger.info(f"HEY YOU YOU'RE DEVIATING FROM YOUR GOAL")
                 
                 # Draw rectangle and emotion label
@@ -143,13 +160,15 @@ class FacialEngine:
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
                 cv2.putText(frame, "Unknown", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
         
+           
         return frame
     
     def is_detection_running(self):
         """Check if detection is currently running"""
         return self.is_running
     
-    def set_detection_parameters(self, scale_factor=None, min_neighbors=None, min_size=None):
+
+    def _set_detection_parameters(self, scale_factor=None, min_neighbors=None, min_size=None):
         """
         Update detection parameters
         
