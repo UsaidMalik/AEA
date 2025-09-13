@@ -1,2 +1,3 @@
 # ignore venv run it locally
 /venv
+__pycache__
