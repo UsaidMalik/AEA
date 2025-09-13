@@ -3,10 +3,11 @@ from deepface import DeepFace
 import logging
 import threading
 import time
-
+from utils.buffer_parser import parse_buffer
+from collections import deque
 
 class FacialEngine:
-    def __init__(self, camera_index=0):
+    def __init__(self, camera_index=0, action_config=None, safety_buffer_max_size=1, percentage=0.6):
         """
         Initialize the Facial Engine
         
@@ -19,11 +20,18 @@ class FacialEngine:
         self.is_running = False
         self.detection_thread = None
         self.window_name = 'Real-time Emotion Detection'
-        
+        self.percentage = percentage
+        self.action_config = action_config if action_config is not None else {"banned_emotions": ["neutral"]}
+        self.fps = 30
+        self.safety_buffer_max_size = safety_buffer_max_size
+        self.safety_buffer = deque(maxlen=floor(self.safety_buffer_max_size*self.fps))
+        # this is here as a buffer to store the emotions if it full with a certain emotion that means that the emotion is set really and not deviating from the goal
+                 
         # Detection parameters
         self.scale_factor = 1.1
         self.min_neighbors = 5
         self.min_size = (30, 30)
+
         
         # Setup logging
         logging.basicConfig(level=logging.INFO)
@@ -45,6 +53,9 @@ class FacialEngine:
             self.detection_thread = threading.Thread(target=self._detection_loop)
             self.detection_thread.start()
             self.logger.info("Emotion detection started")
+            self.fps = self.cap.get(cv2.CAP_PROP_FPS) or 30
+            self.safety_buffer = deque(maxlen=self.safety_buffer_max_size*self.fps)
+
             return True
             
         except Exception as e:
@@ -115,7 +126,11 @@ class FacialEngine:
                 # Analyze emotion using DeepFace
                 result = DeepFace.analyze(face_roi, actions=['emotion'], enforce_detection=False)
                 emotion = result[0]['dominant_emotion']
+                self.logger.info(f"Emotion: {emotion}")
+                self.safety_buffer.append(emotion)
                 confidence = result[0]['emotion'][emotion]
+                if parse_buffer(self.safety_buffer, self.percentage, self.safety_buffer_max_size) in self.action_config['banned_emotions']:
+                    self.logger.info(f"HEY YOU YOU'RE DEVIATING FROM YOUR GOAL")
                 
                 # Draw rectangle and emotion label
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
