@@ -1,0 +1,5 @@
+{
+ "banned_emotions": ["anger", "disgust", "fear", "sadness"],
+ "banned_websites": ["youtube.com", "facebook.com", "twitter.com", "instagram.com", "tiktok.com"]
+
+}
