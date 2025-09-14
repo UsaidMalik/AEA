@@ -1,4 +1,4 @@
-from Engines.Camera.camera_engine import CameraEngine
+from Engines.facial_engine import FacialEngine
 import json
 import uuid
 def main():
@@ -25,7 +25,7 @@ def main():
     
     # the facial engine will always take a config that tells it what to do
     print("action config is", action_config)
-    facial_engine = CameraEngine(action_config=action_config, session_id=session_id, camera_index=0, safety_buffer_seconds=10)
+    facial_engine = FacialEngine(action_config=action_config, session_id=session_id, camera_index=0, safety_buffer_seconds=10)
     facial_engine.start_detection() # this is threaded
 
 if __name__ == "__main__":
