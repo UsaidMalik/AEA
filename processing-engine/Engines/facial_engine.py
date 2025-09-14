@@ -5,8 +5,12 @@ import threading
 from utils.buffer_parser import parse_buffer
 from collections import deque
 import math
+import numpy as np
+import onnxruntime as ort
 from DBWriter.DBWriter import DBWriter
 import datetime 
+import os
+from pathlib import Path
 
 class FacialEngine:
     def __init__(self, action_config, session_id=None, camera_index=0, safety_buffer_seconds=1, minimum_emotion_percentage=0.6, show_face_window=True):
@@ -25,6 +29,7 @@ class FacialEngine:
         self.minimum_emotion_percentage = minimum_emotion_percentage # how much a buffer must include of a single event to definetly call that this event is happening
         
         # internally set (hardcoded by the class)
+        # could change this to a yolo based classifier tbh
         self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
         self.window_name = 'AEA Facial Engine'
         self.write_to_collection = "facial_engine" # writes to this collection in the mongo data base
@@ -52,6 +57,67 @@ class FacialEngine:
         self.last_greatest_emotion = None # the last greatest emotion that was detected (used to avoid spamming the database with the same emotion)
         self.is_in_violation = False # is the system currently in a violation state
 
+        # model-related setup
+        self.session = None
+        self.emotion_labels = ["neutral", "happy", "sad", "surprise", "fear", "disgust", "anger", "contempt"]
+        self._select_model()
+
+    # selects the model to use based off of the hardware available
+
+    def _select_model(self):
+        # Get absolute path to this script
+        script_dir = Path(__file__).resolve().parent
+        model_path = script_dir / "models" / "emotion.onnx"
+
+        # Locate the QNN backend DLL
+        onnxruntime_dir = Path(ort.__file__).resolve().parent
+        hexagon_driver = onnxruntime_dir / "capi" / "QnnHtp.dll"
+
+        # Set up provider options for Qualcomm NPU
+        qnn_provider_options = {
+            "backend_path": str(hexagon_driver)
+        }
+
+        # Create session options
+        so = ort.SessionOptions()
+        so.enable_profiling = True
+
+        try:
+            self.session = ort.InferenceSession(
+                str(model_path),
+                providers=[("QNNExecutionProvider", qnn_provider_options), "CPUExecutionProvider"],
+                sess_options=so
+            )
+            self.logger.info("Loaded model with QNNExecutionProvider")
+        except Exception as e:
+            self.logger.warning(f"QNN provider failed: {e}. Falling back to CPU.")
+            self.session = ort.InferenceSession(
+                str(model_path),
+                providers=["CPUExecutionProvider"],
+                sess_options=so
+            )
+
+        print("Using model at:", model_path)
+
+
+
+    def _run_emotion_inference(self, face_roi):
+        # preprocess the image for ONNX model
+        input_size = (224, 224) # this might need to be changed based on model spec
+        img = cv2.resize(face_roi, input_size)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = img.astype(np.float32) / 255.0
+        img = np.transpose(img, (2, 0, 1)) # CHW format
+        img = np.expand_dims(img, axis=0)
+
+        inputs = {self.session.get_inputs()[0].name: img}
+        outputs = self.session.run(None, inputs)
+        emotion_scores = outputs[0][0]
+        emotion_idx = int(np.argmax(emotion_scores))
+        confidence = float(emotion_scores[emotion_idx])
+        emotion = self.emotion_labels[emotion_idx]
+        return emotion, confidence
+    
     def start_detection(self):
         """Start the emotion detection process in a separate thread"""
         if self.is_running:
@@ -113,7 +179,7 @@ class FacialEngine:
             # do a check for the banned emotions
             self.last_greatest_emotion = parse_buffer(self.safety_buffer, self.minimum_emotion_percentage, self.safety_buffer_max_size)
             if self.last_greatest_emotion in self.action_config['banned_emotions'] and not self.is_in_violation:
-                self.onViolation() # this function is called when a violation happens and handles everything else
+                self.on_violation() # this function is called when a violation happens and handles everything else
                 # it might be the case to pause everything here as well ?
                 self.is_in_violation = True # to avoid spamming the database
             
@@ -126,6 +192,10 @@ class FacialEngine:
                 break
         
         self.is_running = False
+
+    def is_detection_running(self):
+        """Check if detection is running - used for testing"""
+        return self.is_running
     
     def _process_frame(self, frame):
         """
@@ -154,16 +224,15 @@ class FacialEngine:
             self.safety_buffer.append("multiple") # means multiple people are in the screen NOT GOOD
         else:
             x, y, w, h = faces[0]
-            face_roi = frame[y:y + h, x:x + w]
+            face_roi = frame[y:y + h, x:x + w] # facial region of interest
         
             try:
                 # Analyze emotion using DeepFace
                 # this model will have to be replaced with something else 
-                result = DeepFace.analyze(face_roi, actions=['emotion'], enforce_detection=False)
-                emotion = result[0]['dominant_emotion']
+                emotion, confidence = self._run_emotion_inference(face_roi)
+                 # Log detected emotion
                 self.logger.info(f"Emotion: {emotion}")
                 self.safety_buffer.append(emotion)
-                confidence = result[0]['emotion'][emotion]
                 
                 # Draw rectangle and emotion label
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
@@ -177,13 +246,10 @@ class FacialEngine:
                 cv2.putText(frame, "Unknown", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
         return frame
     
-    def is_detection_running(self):
-        """Check if detection is currently running"""
-        return self.is_running
-    
-    def onViolation(self):
+    # does actions upon detecting a violation
+    def on_violation(self):
         # this function is called when a violation happens
-        print("VIOLATION HAPPENED")
+        print("VIOLATION HAPPENED") # change this with a logge
         # the contract for this is this: 
         """
         {
@@ -220,4 +286,4 @@ class FacialEngine:
                 "schema_version": 1
             }
         )
-        pass
+    

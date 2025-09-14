@@ -2,12 +2,22 @@ import time
 import logging
 from Engines.facial_engine import FacialEngine  # Replace with your actual module name
 import cv2
+import json
+import os
 
 def run_e2e_test(timeout=10):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger("FacialEngineTest")
 
-    engine = FacialEngine()
+    # Get absolute path to config file based on script location
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    config_path = os.path.join(script_dir, "..", "configs", "study_config.json")
+
+    print(f"Loading config from: {config_path}")
+    with open(config_path, "r") as f:
+        action_config = json.load(f)
+
+    engine = FacialEngine(action_config)
 
     logger.info("Starting FacialEngine... ")
     if not engine.start_detection():
