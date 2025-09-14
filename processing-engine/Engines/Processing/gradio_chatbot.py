@@ -5,7 +5,11 @@ import json
 import os
 import glob
 import threading
+import logging
 from datetime import datetime
+
+# Get a logger for this module
+logger = logging.getLogger(__name__)
 
 class Chatbot:
     """
@@ -90,7 +94,15 @@ Please generate a JSON configuration that matches this structure exactly. Use ap
                 json=data,
                 timeout=self.stream_timeout
             )
-            response_text = chat_response.json()['textResponse']
+            # Raise an HTTPError for bad responses (4xx or 5xx)
+            chat_response.raise_for_status()
+
+            response_json = chat_response.json()
+            response_text = response_json.get('textResponse')
+
+            if response_text is None:
+                logger.error(f"API response did not contain 'textResponse' key. Full response: {response_json}")
+                return None
             
             # Try to extract JSON from the response
             json_start = response_text.find('{')
@@ -105,13 +117,16 @@ Please generate a JSON configuration that matches this structure exactly. Use ap
                 return None
                 
         except (ValueError, json.JSONDecodeError) as e:
-            print(f"Failed to decode JSON from response: {e}")
+            logger.error(f"Failed to decode JSON from response: {e}")
             return None
         except requests.exceptions.Timeout:
-            print(f"Request timed out after {self.stream_timeout} seconds.")
+            logger.warning(f"Request timed out after {self.stream_timeout} seconds.")
+            return None
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"HTTP error occurred during API call: {e}")
             return None
         except Exception as e:
-            print(f"An error occurred during API call: {e}")
+            logger.error(f"An unexpected error occurred during API call: {e}")
             return None
 
     def save_config_to_file(self, json_config: str) -> str:
@@ -144,7 +159,7 @@ Please generate a JSON configuration that matches this structure exactly. Use ap
             
             return filepath
         except Exception as e:
-            print(f"Failed to save configuration to file: {e}")
+            logger.error(f"Failed to save configuration to file: {e}")
             return None
 
 def launch_gradio_ui(chatbot_instance):

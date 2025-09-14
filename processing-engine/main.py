@@ -3,29 +3,23 @@ import uuid
 import os
 import glob
 import threading
-import time
+import logging
+import queue
 from Engines.Camera.camera_engine import CameraEngine
 from Engines.Processing.gradio_chatbot import Chatbot, launch_gradio_ui
 
-def find_latest_config_file(directory: str) -> str:
-    """
-    Finds the path to the most recently created .json file in a directory.
-    """
-    try:
-        list_of_files = glob.glob(os.path.join(directory, '*.json'))
-        if not list_of_files:
-            return None
-        latest_file = max(list_of_files, key=os.path.getctime)
-        return latest_file
-    except Exception as e:
-        print(f"Error finding latest config file: {e}")
-        return None
+# Set up logging configuration
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
-def launch_gradio_thread(chatbot_instance):
+def launch_gradio_thread(chatbot_instance, q):
     """
     Function to run the Gradio UI in a separate thread.
     """
-    launch_gradio_ui(chatbot_instance)
+    launch_gradio_ui(chatbot_instance, q)
 
 def main():
     # --- FEATURE FLAG ---
@@ -36,30 +30,27 @@ def main():
     session_id = uuid.uuid4()
     
     if USE_GRADIO_UI:
-        print("Welcome to AEA - the AI Accountable Executive Assistant That keeps you organized!")
-        print("Please describe your study session in the pop-up window to generate a new configuration.")
+        logger.info("Welcome to AEA - the AI Accountable Executive Assistant That keeps you organized!")
+        logger.info("Please describe your study session in the pop-up window to generate a new configuration.")
         
         chat_engine = Chatbot()
         
-        # Launch the Gradio UI in a separate thread
-        gradio_thread = threading.Thread(target=launch_gradio_thread, args=(chat_engine,))
+        # Create a queue for inter-thread communication
+        config_queue = queue.Queue()
+        
+        # Launch the Gradio UI in a separate thread, passing the queue
+        gradio_thread = threading.Thread(target=launch_gradio_thread, args=(chat_engine, config_queue))
         gradio_thread.daemon = True  # Allows the thread to exit with the main program
         gradio_thread.start()
         
-        # Loop to wait for the configuration file to be created
-        latest_config_path = None
-        configs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "configs")
-        configs_dir = os.path.abspath(configs_dir)
+        logger.info("Gradio UI running in a new window...")
+        logger.info("Waiting for configuration file to be saved...")
         
-        print("Gradio UI running in a new window...")
-        print("Waiting for configuration file to be saved...")
+        # Wait for the Gradio thread to put the file path into the queue
+        # This is a blocking call and is much more efficient than polling
+        latest_config_path = config_queue.get()
         
-        # Poll for the file until it appears
-        while not latest_config_path:
-            latest_config_path = find_latest_config_file(configs_dir)
-            time.sleep(1) # Check every second
-        
-        print(f"Configuration file found at: {latest_config_path}")
+        logger.info(f"Configuration file found at: {latest_config_path}")
         
         # Load the configuration file
         with open(latest_config_path, "r") as f:
@@ -73,11 +64,11 @@ def main():
             "write_essay": "configs/write_essay_config.json",
         }
         
-        print("Welcome to AEA - the AI Accountable Executive Assistant That keeps you organized!")
+        logger.info("Welcome to AEA - the AI Accountable Executive Assistant That keeps you organized!")
         user_action = input("What would you like to do today? (write_essay, study): ").strip().lower()
 
         while user_action not in config_paths:
-            print(f"Sorry, I don't recognize the action '{user_action}'. Please choose from {list(config_paths.keys())}.")
+            logger.warning(f"Sorry, I don't recognize the action '{user_action}'. Please choose from {list(config_paths.keys())}.")
             user_action = input("What would you like to do today? (write_essay, study): ").strip().lower()
 
         # Get the absolute path to the configs directory
@@ -88,8 +79,8 @@ def main():
             action_config = json.load(f)
 
     # --- Start the Camera Engine with the selected configuration ---
-    print(f"Great! You've chosen to '{user_action}'. Initializing the {user_action} engine...")
-    print("action config is", action_config)
+    logger.info(f"Great! You've chosen to '{user_action}'. Initializing the {user_action} engine...")
+    logger.debug("action config is %s", action_config)
     facial_engine = CameraEngine(action_config=action_config, session_id=session_id, camera_index=0, safety_buffer_seconds=10)
     facial_engine.start_detection() # this is threaded
 
