@@ -1,5 +1,5 @@
 { 
-    "banned_emotions": ["anger", "disgust", "fear", "sadness"],
+    "banned_emotions": ["anger", "disgust", "fear", "sadness", "missing"],
     "allowed_emotions": ["neutral", "happy", "calm"],
     "banned_websites": ["youtube.com", "facebook.com", "twitter.com", "instagram.com", "tiktok.com"],
     "allowed_websites": ["khanacademy.org", "wikipedia.org"],
