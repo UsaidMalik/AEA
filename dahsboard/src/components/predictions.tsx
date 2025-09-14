@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Typography, Card, CardContent, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
 
-// Define the type for a prediction
 interface Prediction {
   session_id: string;
   ts_generated: string;
@@ -61,11 +60,10 @@ const PredictionsComponent: React.FC = () => {
                 <TableRow key={index}>
                   <TableCell>{new Date(prediction.ts_generated).toLocaleString()}</TableCell>
                   <TableCell>
-                    {prediction.models?.risk_flags ? prediction.models.risk_flags.join(', ') : 'N/A'}
+                    {prediction.models?.risk_flags?.join(', ') || 'N/A'}
                   </TableCell>
                   <TableCell>
-                    {prediction.models?.focus_forecast ? 
-                      prediction.models.focus_forecast.map(f => (f * 100).toFixed(2) + '%').join(', ') : 'N/A'}
+                    {prediction.models?.focus_forecast?.map(f => (f * 100).toFixed(2) + '%').join(', ') || 'N/A'}
                   </TableCell>
                 </TableRow>
               ))}

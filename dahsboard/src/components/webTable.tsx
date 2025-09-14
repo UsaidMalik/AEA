@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Typography, Card, CardContent, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
 
-// Define the type for a web record
 interface WebEvent {
   session_id: string;
   ts_open: string;
@@ -63,7 +62,7 @@ const WebTable: React.FC = () => {
                   <TableCell>{web.policy.allowed ? 'Allowed' : 'Denied'}</TableCell>
                   <TableCell>{new Date(web.ts_open).toLocaleString()}</TableCell>
                   <TableCell>{web.action_taken}</TableCell>
-                  <TableCell>{web.affect.label}</TableCell>
+                  <TableCell>{web.affect?.label || 'N/A'}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

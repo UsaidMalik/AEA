@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Typography, Card, CardContent, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
 
-// Define the type for an intervention
 interface Intervention {
   session_id: string;
   ts: string;

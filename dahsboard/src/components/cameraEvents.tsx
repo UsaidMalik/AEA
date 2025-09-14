@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Typography, Card, CardContent, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
 
-// Define the type for a camera event
 interface CameraEvent {
   session_id: string;
   ts: string;
@@ -55,9 +54,9 @@ const CameraEvents: React.FC = () => {
               {cameraEvents.map((event, index) => (
                 <TableRow key={index}>
                   <TableCell>{new Date(event.ts).toLocaleString()}</TableCell>
-                  <TableCell>{event.presence.state}</TableCell>
-                  <TableCell>{event.posture.indicator}</TableCell>
-                  <TableCell>{event.affect.label}</TableCell>
+                  <TableCell>{event.presence?.state || 'N/A'}</TableCell>
+                  <TableCell>{event.posture?.indicator || 'N/A'}</TableCell>
+                  <TableCell>{event.affect?.label || 'N/A'}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

@@ -1,5 +1,5 @@
 import React from 'react';
-import {Container, Typography, Stack} from '@mui/material';
+import { Container, Typography, Stack } from '@mui/material';
 
 import SessionOverview from './components/sessionOverview';
 import AppsTable from './components/appsTable';
@@ -9,16 +9,24 @@ import Interventions from './components/interventions';
 import Configs from './components/configs';
 import PredictionsComponent from './components/predictions';
 
-const App: React.FC =() => {
+const App: React.FC = () => {
   return (
-    <Container maxWidth="lg" sx={{padding: 4}}>
+    <Container 
+      maxWidth="lg" 
+      sx={{ 
+        padding: 4, 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center' 
+      }}
+    >
       {/* Big Heading at the Top of the Page */}
-      <Typography variant= "h3" gutterBottom>
+      <Typography variant="h3" gutterBottom align="center">
         📊 Focus Dashboard
       </Typography>
-      {/* Stack Vertical Listing with the spacing */}
-      <Stack spacing={4}>
-        {/*Each Card is one schema section */}
+      
+      {/* Use Stack for a simple vertical layout */}
+      <Stack spacing={4} sx={{ width: '100%' }}>
         <SessionOverview />
         <AppsTable />
         <WebTable />

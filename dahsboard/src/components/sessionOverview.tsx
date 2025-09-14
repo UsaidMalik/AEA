@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, Typography } from '@mui/material';
+import { Card, CardContent, Typography, Stack } from '@mui/material';
+import FocusChart from './focusChart';
 
-// Define the type for the session data
 interface Session {
   session_id: string;
   user_id: string;
@@ -53,12 +53,16 @@ const SessionOverview: React.FC = () => {
     <Card>
       <CardContent>
         <Typography variant="h5" gutterBottom>Session Overview</Typography>
-        <Typography>Session ID: {session.session_id}</Typography>
-        <Typography>User ID: {session.user_id}</Typography>
-        <Typography>Started At: {new Date(session.started_at).toLocaleString()}</Typography>
-        <Typography>Ended At: {new Date(session.ended_at).toLocaleString()}</Typography>
-        <Typography>Focus Percentage: {(session.stats.focus_pct * 100).toFixed(2)}%</Typography>
-        <Typography>Away Seconds: {session.stats.away_secs}</Typography>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+          <Card variant="outlined" sx={{ p: 2, flexGrow: 1 }}>
+            <Typography variant="body1">Session ID: {session.session_id}</Typography>
+            <Typography variant="body1">User ID: {session.user_id}</Typography>
+            <Typography variant="body1">Started: {new Date(session.started_at).toLocaleString()}</Typography>
+            <Typography variant="body1">Ended: {new Date(session.ended_at).toLocaleString()}</Typography>
+            <Typography variant="body1">Away Time: {session.stats.away_secs}s</Typography>
+          </Card>
+          <FocusChart focus_pct={session.stats.focus_pct} />
+        </Stack>
       </CardContent>
     </Card>
   );
