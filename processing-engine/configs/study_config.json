@@ -11,5 +11,5 @@
     "activity_log_enable": true,
     "custom_triggers": ["absent_for_60s", "multi_face_detected"],
     "action": "study",
-    "camera_on": true
+    "camera_displayed": true
 }
