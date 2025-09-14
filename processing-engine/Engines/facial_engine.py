@@ -24,26 +24,28 @@ class FacialEngine:
 
         # internally set (hardcoded by the class)
         self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-        self.cap = None
-        self.is_running = False
-        self.detection_thread = None
         self.window_name = 'AEA Facial Engine'
         self.write_to_collection = "facial_engine" # writes to this collection in the mongo data base
         
-        # set by settings function for buffers
-        # this is here as a buffer to store the emotions if it full with a certain emotion that means that the emotion is set really and not deviating from the goal
-        self.safety_buffer = deque(maxlen=math.floor(self.safety_buffer_max_size*self.fps))
-                 
-        # Detection parameters
+        """ scale_factor (float): How much the image size is reduced at each scale
+            min_neighbors (int): How many neighbors each candidate rectangle should have to retain it
+            min_size (tuple): Minimum possible object size
+        """
         self.scale_factor = 1.1
-        self.min_neighbors = 5
-        self.min_size = (30, 30)
+        self.min_neighbors = 5 # how many neighbors to collate a face to
+        self.min_size = (30, 30) # how big a face must be in pixels minimum
 
-        
-        # Setup logging
+        # lowkey no idea what the below does will have to google it
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
-    
+
+        # set by settings function for buffers
+        # this is here as a buffer to store the emotions if it full with a certain emotion that means that the emotion is set really and not deviating from the goal
+        self.safety_buffer = None # must be initialized by the initializer
+        self.cap = None
+        self.is_running = False
+        self.detection_thread = None
+                 
     def start_detection(self):
         """Start the emotion detection process in a separate thread"""
         if self.is_running:
@@ -168,14 +170,14 @@ class FacialEngine:
         return self.is_running
     
 
-    def _set_detection_parameters(self, scale_factor=None, min_neighbors=None, min_size=None):
+    # do this with kwargs ngl it should be somewhat generic such that the caller could 
+    # put in the self attributes it wants and then appends them
+    def _set_attributes(self, scale_factor=None, min_neighbors=None, min_size=None):
         """
         Update detection parameters
         
         Args:
-            scale_factor (float): How much the image size is reduced at each scale
-            min_neighbors (int): How many neighbors each candidate rectangle should have to retain it
-            min_size (tuple): Minimum possible object size
+          
         """
         if scale_factor is not None:
             self.scale_factor = scale_factor
