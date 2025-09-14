@@ -1,8 +1,8 @@
-// WebTable.tsx
-import React from 'react';
-import { Card, CardContent, Typography, Stack, Chip } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Typography, Card, CardContent, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
 
-interface WebRecord {
+// Define the type for a web record
+interface WebEvent {
   session_id: string;
   ts_open: string;
   ts_close: string;
@@ -10,51 +10,68 @@ interface WebRecord {
   url_hash: string;
   policy: { allowed: boolean; rule: string };
   action_taken: string;
+  notification: { sent: boolean; ts: string };
   affect: { label: string; confidence: number };
+  schema_version: number;
 }
 
-interface Props {
-  data?: WebRecord[];
-}
+const WebTable: React.FC = () => {
+  const [webData, setWebData] = useState<WebEvent[]>([]);
+  const [loading, setLoading] = useState(true);
 
-const mockWeb: WebRecord[] = [
-  {
-    session_id: "uuid-v4",
-    ts_open: "2025-09-13T09:10:00Z",
-    ts_close: "2025-09-13T09:20:00Z",
-    domain: "instagram.com",
-    url_hash: "abcdef123456",
-    policy: { allowed: false, rule: "web_deny" },
-    action_taken: "blocked",
-    affect: { label: "distressed", confidence: 0.71 }
+  useEffect(() => {
+    const fetchWebData = async () => {
+      try {
+        const response = await fetch('/api/web?page=1&limit=10');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        setWebData(data.data);
+      } catch (error) {
+        console.error("Failed to fetch web data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchWebData();
+  }, []);
+
+  if (loading) {
+    return <Typography>Loading web data...</Typography>;
   }
-];
 
-const WebTable: React.FC<Props> = ({ data = mockWeb }) => (
-  <Card style={{ marginBottom: 20 }}>
-    <CardContent>
-      <Typography variant="h5" gutterBottom>Website Visits</Typography>
-      <Stack spacing={2}>
-        {data.map((web, index) => (
-          <Card key={index} variant="outlined">
-            <CardContent>
-              <Typography><strong>Domain:</strong> {web.domain}</Typography>
-              <Typography>
-                <strong>Open:</strong> {new Date(web.ts_open).toLocaleTimeString()} |
-                <strong>Close:</strong> {new Date(web.ts_close).toLocaleTimeString()}
-              </Typography>
-              <Stack direction="row" spacing={1} mt={1}>
-                <Chip label={`Allowed: ${web.policy.allowed}`} color={web.policy.allowed ? "success" : "error"} />
-                <Chip label={`Rule: ${web.policy.rule}`} color="primary" />
-                <Chip label={`Action: ${web.action_taken}`} color="warning" />
-                <Chip label={`Emotion: ${web.affect.label} (${(web.affect.confidence*100).toFixed(0)}%)`} color="secondary" />
-              </Stack>
-            </CardContent>
-          </Card>
-        ))}
-      </Stack>
-    </CardContent>
-  </Card>
-);
+  return (
+    <Card>
+      <CardContent>
+        <Typography variant="h5" gutterBottom>Web Activity</Typography>
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Domain</TableCell>
+                <TableCell>Policy</TableCell>
+                <TableCell>Timestamp</TableCell>
+                <TableCell>Action</TableCell>
+                <TableCell>Affect</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {webData.map((web, index) => (
+                <TableRow key={index}>
+                  <TableCell>{web.domain}</TableCell>
+                  <TableCell>{web.policy.allowed ? 'Allowed' : 'Denied'}</TableCell>
+                  <TableCell>{new Date(web.ts_open).toLocaleString()}</TableCell>
+                  <TableCell>{web.action_taken}</TableCell>
+                  <TableCell>{web.affect.label}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </CardContent>
+    </Card>
+  );
+};
 
 export default WebTable;

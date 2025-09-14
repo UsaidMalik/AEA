@@ -1,8 +1,8 @@
-// Predictions.tsx
-import React from 'react';
-import { Card, CardContent, Typography, Stack, Chip } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Typography, Card, CardContent, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
 
-interface Predictions {
+// Define the type for a prediction
+interface Prediction {
   session_id: string;
   ts_generated: string;
   models: {
@@ -10,42 +10,71 @@ interface Predictions {
     optimal_schedule: { slots: string[] };
     risk_flags: string[];
   };
+  input_span: {
+    start: string;
+    end: string;
+  };
+  schema_version: number;
 }
 
-interface Props {
-  data?: Predictions[];
-}
+const PredictionsComponent: React.FC = () => {
+  const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [loading, setLoading] = useState(true);
 
-const mockPredictions: Predictions[] = [
-  {
-    session_id: "uuid-v4",
-    ts_generated: "2025-09-13T09:00:00Z",
-    models: { 
-      focus_forecast: [0.82, 0.79, 0.68],
-      optimal_schedule: { slots: ["9–11AM", "2–4PM"] },
-      risk_flags: ["fatigue", "repetition"]
-    }
+  useEffect(() => {
+    const fetchPredictions = async () => {
+      try {
+        const response = await fetch('/api/predictions?page=1&limit=10');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        setPredictions(data.data);
+      } catch (error) {
+        console.error("Failed to fetch predictions data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPredictions();
+  }, []);
+
+  if (loading) {
+    return <Typography>Loading predictions...</Typography>;
   }
-];
 
-const PredictionsComponent: React.FC<Props> = ({ data = mockPredictions }) => (
-  <Card style={{ marginBottom: 20 }}>
-    <CardContent>
-      <Typography variant="h5" gutterBottom>Predictions</Typography>
-      <Stack spacing={2}>
-        {data.map((p, idx) => (
-          <Card key={idx} variant="outlined">
-            <CardContent>
-              <Typography><strong>Generated:</strong> {new Date(p.ts_generated).toLocaleString()}</Typography>
-              <Typography><strong>Focus Forecast:</strong> {p.models.focus_forecast.map(f => (f*100).toFixed(1)).join('% , ')}%</Typography>
-              <Typography><strong>Optimal Slots:</strong> {p.models.optimal_schedule.slots.join(', ')}</Typography>
-              <Typography><strong>Risk Flags:</strong> {p.models.risk_flags.join(', ')}</Typography>
-            </CardContent>
-          </Card>
-        ))}
-      </Stack>
-    </CardContent>
-  </Card>
-);
+  return (
+    <Card>
+      <CardContent>
+        <Typography variant="h5" gutterBottom>Predictions</Typography>
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Timestamp Generated</TableCell>
+                <TableCell>Risk Flags</TableCell>
+                <TableCell>Focus Forecast</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {predictions.map((prediction, index) => (
+                <TableRow key={index}>
+                  <TableCell>{new Date(prediction.ts_generated).toLocaleString()}</TableCell>
+                  <TableCell>
+                    {prediction.models?.risk_flags ? prediction.models.risk_flags.join(', ') : 'N/A'}
+                  </TableCell>
+                  <TableCell>
+                    {prediction.models?.focus_forecast ? 
+                      prediction.models.focus_forecast.map(f => (f * 100).toFixed(2) + '%').join(', ') : 'N/A'}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </CardContent>
+    </Card>
+  );
+};
 
 export default PredictionsComponent;

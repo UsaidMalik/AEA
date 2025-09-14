@@ -1,50 +1,70 @@
-// Configs.tsx
-import React from 'react';
-import { Card, CardContent, Typography, Stack, Chip } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Typography, Card, CardContent, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
 
+// Define the type for a configuration
 interface Config {
   name: string;
-  json: any;
+  json: object;
   source: string;
   prompt: string;
   created_ts: string;
   updated_ts: string;
+  schema_version: number;
 }
 
-interface Props {
-  data?: Config[];
-}
+const Configs: React.FC = () => {
+  const [configs, setConfigs] = useState<Config[]>([]);
+  const [loading, setLoading] = useState(true);
 
-const mockConfigs: Config[] = [
-  {
-    name: "essay_mode_1",
-    json: { action: "write_essay", apps: { allow: ["notepad.exe"], deny: ["discord.exe"] } },
-    source: "llm",
-    prompt: "I'm writing an essay, block distractions",
-    created_ts: "2025-09-13T09:00:00Z",
-    updated_ts: "2025-09-13T09:00:00Z"
+  useEffect(() => {
+    const fetchConfigs = async () => {
+      try {
+        const response = await fetch('/api/configs?page=1&limit=10');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        setConfigs(data.data);
+      } catch (error) {
+        console.error("Failed to fetch configs data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchConfigs();
+  }, []);
+
+  if (loading) {
+    return <Typography>Loading configurations...</Typography>;
   }
-];
 
-const Configs: React.FC<Props> = ({ data = mockConfigs }) => (
-  <Card style={{ marginBottom: 20 }}>
-    <CardContent>
-      <Typography variant="h5" gutterBottom>Configurations</Typography>
-      <Stack spacing={2}>
-        {data.map((cfg, idx) => (
-          <Card key={idx} variant="outlined">
-            <CardContent>
-              <Typography><strong>Name:</strong> {cfg.name}</Typography>
-              <Typography><strong>Source:</strong> {cfg.source}</Typography>
-              <Typography><strong>Prompt:</strong> {cfg.prompt}</Typography>
-              <Typography><strong>Created:</strong> {new Date(cfg.created_ts).toLocaleString()}</Typography>
-              <Typography><strong>Updated:</strong> {new Date(cfg.updated_ts).toLocaleString()}</Typography>
-            </CardContent>
-          </Card>
-        ))}
-      </Stack>
-    </CardContent>
-  </Card>
-);
+  return (
+    <Card>
+      <CardContent>
+        <Typography variant="h5" gutterBottom>Configurations</Typography>
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Config Name</TableCell>
+                <TableCell>Source</TableCell>
+                <TableCell>Created At</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {configs.map((config, index) => (
+                <TableRow key={index}>
+                  <TableCell>{config.name}</TableCell>
+                  <TableCell>{config.source}</TableCell>
+                  <TableCell>{new Date(config.created_ts).toLocaleString()}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </CardContent>
+    </Card>
+  );
+};
 
 export default Configs;

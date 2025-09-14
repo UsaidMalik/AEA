@@ -1,86 +1,67 @@
-// SessionOverview.tsx
-import React from 'react';
-import { Card, CardContent, Typography, Chip, Stack } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, Typography } from '@mui/material';
 
-// Define violation structure
-interface Violations {
-  web: number;
-  app: number;
-  affect: number;
-}
-
-// Define stats structure
-interface Stats {
-  focus_pct: number;
-  away_secs: number;
-  violations: Violations;
-}
-
-// Define session structure
+// Define the type for the session data
 interface Session {
   session_id: string;
   user_id: string;
   started_at: string;
   ended_at: string;
   config_name: string;
-  stats: Stats;
-}
-
-// Mock session data for testing
-const mockSession: Session = {
-  session_id: "uuid-v4",
-  user_id: "user-123",
-  started_at: "2025-09-13T09:00:00Z",
-  ended_at: "2025-09-13T11:00:00Z",
-  config_name: "study_default",
+  web_policy: { allow: string[]; deny: string[]; wildcard: boolean };
+  app_policy: { allow: string[]; deny: string[] };
+  vision_policy: { require_presence: boolean; away_grace_sec: number };
   stats: {
-    focus_pct: 0.78, // 78% focused
-    away_secs: 420,  // seconds away from screen
-    violations: { web: 3, app: 1, affect: 2 } // number of violations
-  }
-};
-
-// Props for the component, data is optional
-interface Props {
-  data?: Session;
+    focus_pct: number;
+    away_secs: number;
+    violations: { web: number; app: number; affect: number };
+  };
+  schema_version: number;
 }
 
-// Functional component
-const SessionOverview: React.FC<Props> = ({ data = mockSession }) => {
+const SessionOverview: React.FC = () => {
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Helper function to format ISO date to local time
-  const formatTime = (isoStr: string) => new Date(isoStr).toLocaleTimeString();
+  useEffect(() => {
+    const fetchSession = async () => {
+      try {
+        const response = await fetch('/api/sessions?page=1&limit=1');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        setSession(data.data[0]);
+      } catch (error) {
+        console.error("Failed to fetch session data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSession();
+  }, []);
+
+  if (loading) {
+    return <Typography>Loading session data...</Typography>;
+  }
+  
+  if (!session) {
+    return <Typography>No session data available.</Typography>;
+  }
 
   return (
-    // Outer card container
-    <Card style={{ marginBottom: 20 }}>
+    <Card>
       <CardContent>
-        {/* Heading */}
-        <Typography variant="h5" gutterBottom>
-          Session Overview
-        </Typography>
-
-        {/* Basic session info */}
-        <Typography><strong>Session ID:</strong> {data.session_id}</Typography>
-        <Typography><strong>User:</strong> {data.user_id}</Typography>
-        <Typography><strong>Config:</strong> {data.config_name}</Typography>
-        <Typography>
-          <strong>Start:</strong> {formatTime(data.started_at)} | <strong>End:</strong> {formatTime(data.ended_at)}
-        </Typography>
-        <Typography><strong>Focus %:</strong> {(data.stats.focus_pct * 100).toFixed(1)}%</Typography>
-        <Typography><strong>Away Time:</strong> {data.stats.away_secs} sec</Typography>
-
-        {/* Row of violation chips using Stack */}
-        <Stack direction="row" spacing={1} mt={2}>
-          <Chip label={`Web Violations: ${data.stats.violations.web}`} color="error" />
-          <Chip label={`App Violations: ${data.stats.violations.app}`} color="warning" />
-          <Chip label={`Affect Violations: ${data.stats.violations.affect}`} color="secondary" />
-        </Stack>
-
+        <Typography variant="h5" gutterBottom>Session Overview</Typography>
+        <Typography>Session ID: {session.session_id}</Typography>
+        <Typography>User ID: {session.user_id}</Typography>
+        <Typography>Started At: {new Date(session.started_at).toLocaleString()}</Typography>
+        <Typography>Ended At: {new Date(session.ended_at).toLocaleString()}</Typography>
+        <Typography>Focus Percentage: {(session.stats.focus_pct * 100).toFixed(2)}%</Typography>
+        <Typography>Away Seconds: {session.stats.away_secs}</Typography>
       </CardContent>
     </Card>
   );
 };
 
-// Export component
 export default SessionOverview;

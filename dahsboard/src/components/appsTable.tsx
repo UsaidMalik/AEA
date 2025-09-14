@@ -1,8 +1,8 @@
-// AppsTable.tsx
-import React from 'react';
-import { Card, CardContent, Typography, Stack, Chip } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Typography, Card, CardContent, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
 
-interface AppRecord {
+// Define the type for an app record
+interface AppEvent {
   session_id: string;
   ts_open: string;
   ts_close: string;
@@ -10,48 +10,62 @@ interface AppRecord {
   window_title: string;
   policy: { allowed: boolean; rule: string };
   action_taken: string;
+  notification: { sent: boolean; ts: string };
+  schema_version: number;
 }
 
-interface Props {
-  data?: AppRecord[];
-}
+const AppsTable: React.FC = () => {
+  const [apps, setApps] = useState<AppEvent[]>([]);
+  const [loading, setLoading] = useState(true);
 
-const mockApps: AppRecord[] = [
-  {
-    session_id: "uuid-v4",
-    ts_open: "2025-09-13T09:05:00Z",
-    ts_close: "2025-09-13T09:45:00Z",
-    app_name: "chrome.exe",
-    window_title: "Stack Overflow — Code",
-    policy: { allowed: true, rule: "app_allow" },
-    action_taken: "notified"
+  useEffect(() => {
+    const fetchApps = async () => {
+      try {
+        const response = await fetch('/api/apps?page=1&limit=10');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        setApps(data.data);
+      } catch (error) {
+        console.error("Failed to fetch app data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchApps();
+  }, []);
+
+  if (loading) {
+    return <Typography>Loading app data...</Typography>;
   }
-];
 
-const AppsTable: React.FC<Props> = ({ data = mockApps }) => {
   return (
-    <Card style={{ marginBottom: 20 }}>
+    <Card>
       <CardContent>
-        <Typography variant="h5" gutterBottom>Apps Usage</Typography>
-        <Stack spacing={2}>
-          {data.map((app, index) => (
-            <Card key={index} variant="outlined">
-              <CardContent>
-                <Typography><strong>App:</strong> {app.app_name}</Typography>
-                <Typography><strong>Window:</strong> {app.window_title}</Typography>
-                <Typography>
-                  <strong>Open:</strong> {new Date(app.ts_open).toLocaleTimeString()} | 
-                  <strong>Close:</strong> {new Date(app.ts_close).toLocaleTimeString()}
-                </Typography>
-                <Stack direction="row" spacing={1} mt={1}>
-                  <Chip label={`Allowed: ${app.policy.allowed}`} color={app.policy.allowed ? "success" : "error"} />
-                  <Chip label={`Rule: ${app.policy.rule}`} color="primary" />
-                  <Chip label={`Action: ${app.action_taken}`} color="warning" />
-                </Stack>
-              </CardContent>
-            </Card>
-          ))}
-        </Stack>
+        <Typography variant="h5" gutterBottom>Apps Used</Typography>
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>App Name</TableCell>
+                <TableCell>Window Title</TableCell>
+                <TableCell>Timestamp</TableCell>
+                <TableCell>Action</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {apps.map((app, index) => (
+                <TableRow key={index}>
+                  <TableCell>{app.app_name}</TableCell>
+                  <TableCell>{app.window_title}</TableCell>
+                  <TableCell>{new Date(app.ts_open).toLocaleString()}</TableCell>
+                  <TableCell>{app.action_taken}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
       </CardContent>
     </Card>
   );
