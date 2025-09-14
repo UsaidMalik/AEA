@@ -5,7 +5,7 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('config.yaml', '.')],
+    datas=[('C:\\Users\\qc_de\\AEA\\processing-engine\\venv\\Lib\\site-packages\\gradio_client\\types.json', 'gradio_client'), ('config.yaml', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
