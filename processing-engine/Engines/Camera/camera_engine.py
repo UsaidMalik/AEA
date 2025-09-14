@@ -8,6 +8,7 @@ from DBWriter.DBWriter import DBWriter
 import datetime 
 from Engines.Camera.detectors.emotion_detector import EmotionDetector
 from Engines.Camera.detectors.facial_detector import FacialDetector
+from Alerter.alerter import Alerter
 
 class CameraEngine:
     def __init__(self, action_config, session_id=None, camera_index=0, safety_buffer_seconds=1, minimum_emotion_percentage=0.6, show_face_window=True, 
@@ -37,6 +38,7 @@ class CameraEngine:
         self.service_name = "camera_events" # MAGIC STRING AS MONGODB COLLECTION NAME
         # lowkey no idea what the below does will have to google it
         self.db_writer = DBWriter()
+        self.alerter = Alerter()
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
 
@@ -208,6 +210,7 @@ class CameraEngine:
     def on_violation(self):
         # this function is called when a violation happens
         print("VIOLATION HAPPENED") # change this with a logge
+        self.alerter.alert("Woah There", f"Looks like you're going against your goals last detected state:  {self.last_greatest_emotion}")
         # the contract for this is this: 
         """
         {

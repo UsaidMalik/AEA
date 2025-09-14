@@ -1,0 +1,27 @@
+{
+    "banned_emotions": [
+        "anger",
+        "missing"
+    ],
+    "allowed_emotions": [
+        "neutral",
+        "happy"
+    ],
+    "banned_websites": [
+        "youtube.com"
+    ],
+    "allowed_websites": [
+        "researchgate.net",
+        "scholar.google.com"
+    ],
+    "banned_apps": [],
+    "allowed_apps": [
+        "google Chrome"
+    ],
+    "session_time_limit": 5400,
+    "enforcement_level": "lenient",
+    "notification_preferences": "log_only",
+    "activity_log_enable": true,
+    "custom_trigers": [],
+    "action": "study"
+}

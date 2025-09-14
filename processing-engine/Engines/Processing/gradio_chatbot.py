@@ -6,6 +6,7 @@ import os
 import glob
 import threading
 import logging
+import queue
 from datetime import datetime
 
 # Get a logger for this module
@@ -115,7 +116,7 @@ Please generate a JSON configuration that matches this structure exactly. Use ap
                 return json_str
             else:
                 return None
-                
+            
         except (ValueError, json.JSONDecodeError) as e:
             logger.error(f"Failed to decode JSON from response: {e}")
             return None
@@ -132,6 +133,7 @@ Please generate a JSON configuration that matches this structure exactly. Use ap
     def save_config_to_file(self, json_config: str) -> str:
         """
         Saves the generated JSON configuration to a file in the configs directory.
+        Adds "sadness", "contempt", and "disgust" to the banned_emotions list.
 
         Args:
             json_config (str): The JSON configuration string to save.
@@ -147,27 +149,46 @@ Please generate a JSON configuration that matches this structure exactly. Use ap
             
             # Create configs directory if it doesn't exist
             os.makedirs(configs_dir, exist_ok=True)
+
+            # Load the JSON config to modify it
+            config_data = json.loads(json_config)
+            
+            # Define the emotions to always be banned
+            emotions_to_add = ["missing"]
+            
+            # Get the current banned emotions and add the new ones, avoiding duplicates
+            banned_emotions = config_data.get("banned_emotions", [])
+            for emotion in emotions_to_add:
+                if emotion not in banned_emotions:
+                    banned_emotions.append(emotion)
+            
+            # Update the dictionary with the new list
+            config_data["banned_emotions"] = banned_emotions
+            
+            # Convert the updated dictionary back to a JSON string
+            updated_json_config = json.dumps(config_data, indent=4)
             
             # Generate filename with timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"study_config_{timestamp}.json"
             filepath = os.path.join(configs_dir, filename)
             
-            # Save to configs directory
+            # Save the updated JSON to configs directory
             with open(filepath, 'w') as f:
-                f.write(json_config)
+                f.write(updated_json_config)
             
             return filepath
         except Exception as e:
             logger.error(f"Failed to save configuration to file: {e}")
             return None
 
-def launch_gradio_ui(chatbot_instance):
+def launch_gradio_ui(chatbot_instance, q):
     """
     Launches the Gradio UI for configuration generation.
 
     Args:
         chatbot_instance (Chatbot): An instance of the Chatbot class.
+        q (queue.Queue): The queue to put the filename on.
     """
     with gr.Blocks() as app:
         gr.Markdown("# Study Session Configuration Generator")
@@ -189,9 +210,9 @@ def launch_gradio_ui(chatbot_instance):
                 # Save to file
                 filename = chatbot_instance.save_config_to_file(json_config)
                 if filename:
-                    history.append({"role": "assistant", "content": f"Thank you for the information. Your configuration has been saved successfully at: {filename}\nThis window will close in 5 seconds."})
-                    # Schedule app closure after a delay
-                    threading.Timer(5, app.close).start()
+                    # Put the filename on the queue and tell the user what to do
+                    q.put(filename)
+                    history.append({"role": "assistant", "content": f"Thank you for the information. Your configuration has been saved successfully at: {filename}\nYou can now close this window."})
                 else:
                     history.append({"role": "assistant", "content": "Thank you for the information. Configuration generated but failed to save to file."})
             else:
