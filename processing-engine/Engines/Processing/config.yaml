@@ -1,0 +1,5 @@
+api_key: "API_KEY_HERE"
+model_server_base_url: "http://localhost:3001/api/v1"
+workspace_slug: "WORKSPACE_SLUG_HERE"
+stream: false
+stream_timeout: 60

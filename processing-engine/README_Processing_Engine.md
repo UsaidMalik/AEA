@@ -60,7 +60,7 @@ install the dependencies
     api_key: "your-key-here"
     model_server_base_url: "http://localhost:3001/api/v1"
     workspace_slug: "your-slug-here"
-    stream: true
+    stream: false
     stream_timeout: 60
     ```
 7. Test the model server auth to verify the API key
