@@ -10,6 +10,6 @@
     "notification_preferences": "popup",
     "activity_log_enable": true,
     "custom_triggers": ["absent_for_60s", "multi_face_detected"],
-    "action": "study"
-  
+    "action": "study",
+    "camera_displayed": true
 }

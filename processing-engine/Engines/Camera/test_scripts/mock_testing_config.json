@@ -1,0 +1,15 @@
+{ 
+    "banned_emotions": ["anger", "disgust", "fear", "sadness", "missing"],
+    "allowed_emotions": ["neutral", "happy", "calm"],
+    "banned_websites": ["youtube.com", "facebook.com", "twitter.com", "instagram.com", "tiktok.com"],
+    "allowed_websites": ["khanacademy.org", "wikipedia.org"],
+    "banned_apps": ["discord.exe", "tiktok.exe"],
+    "allowed_apps": ["word.exe", "onenote.exe"],
+    "session_time_limit": 3600,
+    "enforcement_level": "strict",
+    "notification_preferences": "popup",
+    "activity_log_enable": true,
+    "custom_triggers": ["absent_for_60s", "multi_face_detected"],
+    "action": "study",
+    "camera_displayed": true
+}
