@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Typography, Stack, TextField, Button, CircularProgress, Box } from '@mui/material';
+import {
+  Container,
+  Typography,
+  Stack,
+  TextField,
+  Button,
+  CircularProgress,
+  Box
+} from '@mui/material';
 
 import SessionOverview from './components/sessionOverview';
 import AppsTable from './components/appsTable';
@@ -16,32 +24,32 @@ const App: React.FC = () => {
   const [sessionId, setSessionId] = useState('');
 
   useEffect(() => {
-      const fetchSession = async () => {
-          try {
-              const response = await fetch('/api/sessions?page=1&limit=1');
-              const data = await response.json();
-              if (data.data && data.data.length > 0) {
-                  setSessionId(data.data[0].session_id);
-              }
-          } catch (error) {
-              console.error("Failed to fetch session ID:", error);
-          }
-      };
-      fetchSession();
+    const fetchSession = async () => {
+      try {
+        const response = await fetch('/api/sessions?page=1&limit=1');
+        const data = await response.json();
+        if (data.data && data.data.length > 0) {
+          setSessionId(data.data[0].session_id);
+        }
+      } catch (error) {
+        console.error("Failed to fetch session ID:", error);
+      }
+    };
+    fetchSession();
   }, []);
 
   const handleSearch = async () => {
     if (!query || !sessionId) return;
     setIsLoading(true);
     setOllamaResponse('');
-    
+
     const requestBody = {
       question: query,
       session_id: sessionId
     };
 
     try {
-      const response = await fetch('/api/llm/query', {
+      const response = await fetch('/api/query', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -54,35 +62,58 @@ const App: React.FC = () => {
       }
 
       const data = await response.json();
-      setOllamaResponse(data.response);
+
+      if (data.success) {
+        const formatted = `
+📋 MongoDB Query:
+-----------------
+Collection: ${data.query.collection}
+Filter: ${JSON.stringify(data.query.filter, null, 2)}
+Projection: ${JSON.stringify(data.query.projection, null, 2)}
+
+🧠 Results (${data.results.length}):
+-----------------
+${JSON.stringify(data.results, null, 2)}
+        `;
+        setOllamaResponse(formatted);
+      } else {
+        setOllamaResponse(`❌ Error:\n${data.error}\n\n${data.raw || ''}`);
+      }
     } catch (error) {
       console.error("Search error:", error);
-      setOllamaResponse('Error: Could not get a response from the AI.');
+      setOllamaResponse('❌ Error: Could not get a response from the AI.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <Container maxWidth="lg" sx={{ padding: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+    <Container
+      maxWidth="lg"
+      sx={{ padding: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+    >
       <Typography variant="h3" gutterBottom align="center">
         📊 Focus Dashboard
       </Typography>
-      
+
       <Box sx={{ width: '100%', mb: 4, textAlign: 'center' }}>
-        <Typography variant="h6" gutterBottom>Ask the AI Assistant</Typography>
+        <Typography variant="h6" gutterBottom>
+          Ask the AI Assistant
+        </Typography>
         <TextField
           label="Enter your query"
           variant="outlined"
           fullWidth
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleSearch();
+          }}
           sx={{ mb: 2 }}
         />
-        <Button 
-          variant="contained" 
-          onClick={handleSearch} 
+        <Button
+          variant="contained"
+          onClick={handleSearch}
           disabled={isLoading || !sessionId}
         >
           {isLoading ? <CircularProgress size={24} /> : 'Search'}
@@ -90,8 +121,22 @@ const App: React.FC = () => {
       </Box>
 
       {ollamaResponse && (
-        <Box sx={{ width: '100%', my: 4, p: 2, border: '1px solid #ccc', borderRadius: '8px' }}>
-          <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>{ollamaResponse}</Typography>
+        <Box
+          sx={{
+            width: '100%',
+            my: 4,
+            p: 2,
+            border: '1px solid #ccc',
+            borderRadius: '8px',
+            backgroundColor: '#f9f9f9',
+          }}
+        >
+          <Typography
+            variant="body1"
+            sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.9rem' }}
+          >
+            {ollamaResponse}
+          </Typography>
         </Box>
       )}
 
@@ -107,4 +152,5 @@ const App: React.FC = () => {
     </Container>
   );
 };
+
 export default App;
