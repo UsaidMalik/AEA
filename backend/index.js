@@ -3,17 +3,12 @@ import { MongoClient } from "mongodb";
 import paginatedRoutes from "./routes.js";
 import llmQueryRoute from "./llmQueryRoute.js";
 
-
 const app = express();
 const port = 12039;
 
 const client = new MongoClient("mongodb://aea:aea_dev_pwd@localhost:27017");
 
 app.use(express.json());
-
-app.use("/api", llmQueryRoute); // smart LLM query route
-app.use("/api", paginatedRoutes); // paginated data browsing
-
 
 // POST /api/session/start
 app.post("/api/session/start", async (req, res) => {
@@ -70,14 +65,11 @@ app.listen(port, async () => {
 
     // ✅ Register paginated routes AFTER db is attached to app
     app.use("/api", paginatedRoutes);
+    // ✅ Register LLM query route with a specific path to avoid conflict
+    app.use('/api/llm', llmQueryRoute);
 
     console.log(`🚀 AEA backend running at http://localhost:${port}`);
   } catch (err) {
     console.error("❌ Failed to connect to MongoDB:", err);
   }
 });
-
-
-// endpoint examples
-// POST /api/session/start
-// GET /api/sessions?page=1&limit=10

@@ -6,7 +6,7 @@ const router = express.Router();
 
 const allowedCollections = ["web", "apps", "camera_events", "interventions"];
 
-router.post("/query/llm", async (req, res) => {
+router.post("/query", async (req, res) => {
   const { question, session_id } = req.body;
 
   if (!question || !session_id) {
@@ -58,8 +58,7 @@ router.post("/query/llm", async (req, res) => {
   }
 });
 
-// 🔍 Debug/test route
-router.get("/query/llm/test", (req, res) => {
+router.get("/query/test", (req, res) => {
   res.json({
     example_question: "When did I visit Instagram and look happy?",
     expected_request_body: {
