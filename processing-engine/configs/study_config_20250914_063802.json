@@ -1,0 +1,14 @@
+{
+    "banned_emotions": ["anger", "fear", "sadness"],
+    "allowed_emotions": ["neutral"],
+    "banned_websites": ["youtube.com"],
+    "allowed_websites": ["researchgate.net", "scholar.google.com"],
+    "banned_apps": [],
+    "allowed_apps": ["word.exe"],
+    "session_time_limit": 3600,
+    "enforcement_level": "lenient",
+    "notification_preferences": "log_and_alert",
+    "activity_log_enable": true,
+    "custom_triggers": [],
+    "action": "study"
+}

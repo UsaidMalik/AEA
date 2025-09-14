@@ -1,5 +1,5 @@
-api_key: "API_KEY_HERE"
+api_key: "CYX0V4W-8CRMRSF-KF647DX-00N9A29"
 model_server_base_url: "http://localhost:3001/api/v1"
-workspace_slug: "WORKSPACE_SLUG_HERE"
+workspace_slug: "aea"
 stream: false
-stream_timeout: 60
+stream_timeout: 600

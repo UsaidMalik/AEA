@@ -1,15 +1,28 @@
 import gradio as gr
 import requests
 import yaml
-import asyncio
-import httpx
 import json
 import os
+import glob
+import threading
 from datetime import datetime
 
 class Chatbot:
+    """
+    A class to handle interactions with the language model for generating
+    study session configurations via API calls.
+    """
     def __init__(self):
-        with open("config.yaml", "r") as file:
+        # We assume the config.yaml file exists in the same directory as this script.
+        # This will be adjusted in the main.py to handle file paths correctly.
+        config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.yaml")
+        if not os.path.exists(config_path):
+            # Fallback to current working directory if not found
+            config_path = os.path.join(os.getcwd(), "config.yaml")
+            if not os.path.exists(config_path):
+                raise FileNotFoundError(f"config.yaml not found at {config_path}")
+
+        with open(config_path, "r") as file:
             config = yaml.safe_load(file)
 
         self.api_key = config["api_key"]
@@ -31,7 +44,14 @@ class Chatbot:
 
     def generate_study_config(self, user_description: str) -> str:
         """
-        Generate a study session configuration based on user description.
+        Generates a study session configuration based on a user's description
+        by sending a request to the language model API.
+
+        Args:
+            user_description (str): The user's description of their study session.
+
+        Returns:
+            str: The generated JSON configuration as a string, or None if generation fails.
         """
         prompt = f"""Based on the following study session description, create a JSON configuration file with the exact same structure as this example:
 
@@ -63,10 +83,12 @@ Please generate a JSON configuration that matches this structure exactly. Use ap
         }
         
         try:
+            # Add a timeout to the request to prevent it from hanging indefinitely
             chat_response = requests.post(
                 self.chat_url,
                 headers=self.headers,
-                json=data
+                json=data,
+                timeout=self.stream_timeout
             )
             response_text = chat_response.json()['textResponse']
             
@@ -83,16 +105,27 @@ Please generate a JSON configuration that matches this structure exactly. Use ap
                 return None
                 
         except (ValueError, json.JSONDecodeError) as e:
+            print(f"Failed to decode JSON from response: {e}")
+            return None
+        except requests.exceptions.Timeout:
+            print(f"Request timed out after {self.stream_timeout} seconds.")
             return None
         except Exception as e:
+            print(f"An error occurred during API call: {e}")
             return None
 
     def save_config_to_file(self, json_config: str) -> str:
         """
-        Save the generated JSON configuration to a file in the configs directory.
+        Saves the generated JSON configuration to a file in the configs directory.
+
+        Args:
+            json_config (str): The JSON configuration string to save.
+
+        Returns:
+            str: The filepath of the saved configuration, or None if saving fails.
         """
         try:
-            # Get the path to the configs directory (two levels up from current script)
+            # Get the path to the configs directory
             current_dir = os.path.dirname(os.path.abspath(__file__))
             configs_dir = os.path.join(current_dir, "..", "..", "configs")
             configs_dir = os.path.abspath(configs_dir)
@@ -111,11 +144,16 @@ Please generate a JSON configuration that matches this structure exactly. Use ap
             
             return filepath
         except Exception as e:
+            print(f"Failed to save configuration to file: {e}")
             return None
 
-def main():
-    chatbot = Chatbot()
+def launch_gradio_ui(chatbot_instance):
+    """
+    Launches the Gradio UI for configuration generation.
 
+    Args:
+        chatbot_instance (Chatbot): An instance of the Chatbot class.
+    """
     with gr.Blocks() as app:
         gr.Markdown("# Study Session Configuration Generator")
         chatbot_widget = gr.Chatbot(type="messages", value=[{"role": "assistant", "content": "Please describe your study session"}])
@@ -130,36 +168,21 @@ def main():
             history.append({"role": "user", "content": message})
             
             # Generate configuration
-            json_config = chatbot.generate_study_config(message)
+            json_config = chatbot_instance.generate_study_config(message)
             
             if json_config:
                 # Save to file
-                filename = chatbot.save_config_to_file(json_config)
+                filename = chatbot_instance.save_config_to_file(json_config)
                 if filename:
-                    history.append({"role": "assistant", "content": "Thank you for the information. Your study configuration has been saved successfully."})
+                    history.append({"role": "assistant", "content": f"Thank you for the information. Your configuration has been saved successfully at: {filename}\nThis window will close in 5 seconds."})
+                    # Schedule app closure after a delay
+                    threading.Timer(5, app.close).start()
                 else:
                     history.append({"role": "assistant", "content": "Thank you for the information. Configuration generated but failed to save to file."})
             else:
                 history.append({"role": "assistant", "content": "Thank you for the information. I was unable to generate a valid configuration from your description."})
             
-            # Schedule app closure after a delay
-            import threading
-            import time
-            import os
-            import sys
-            
-            def close_after_delay():
-                time.sleep(5)  # Wait 5 seconds for user to read the message
-                app.close()
-                os._exit(0)  # Forcefully terminate the entire process
-            
-            # Start the close timer in a separate thread
-            close_thread = threading.Thread(target=close_after_delay)
-            close_thread.daemon = True
-            close_thread.start()
-            
             return history, ""
-
 
         # Handle form submission
         def handle_submit(message, history):
@@ -180,7 +203,3 @@ def main():
         )
 
     app.launch()
-
-
-if __name__ == "__main__":
-    main()
