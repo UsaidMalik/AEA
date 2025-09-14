@@ -1,6 +1,8 @@
 import express from "express";
 import { MongoClient } from "mongodb";
 import paginatedRoutes from "./routes.js";
+import llmQueryRoute from "./llmQueryRoute.js";
+
 
 const app = express();
 const port = 12039;
@@ -8,6 +10,10 @@ const port = 12039;
 const client = new MongoClient("mongodb://aea:aea_dev_pwd@localhost:27017");
 
 app.use(express.json());
+
+app.use("/api", llmQueryRoute); // smart LLM query route
+app.use("/api", paginatedRoutes); // paginated data browsing
+
 
 // POST /api/session/start
 app.post("/api/session/start", async (req, res) => {
