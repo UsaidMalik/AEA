@@ -1,6 +1,7 @@
 import time
 import logging
 from Engines.facial_engine import FacialEngine  # Replace with your actual module name
+import cv2
 
 def run_e2e_test(timeout=10):
     logging.basicConfig(level=logging.INFO)
@@ -8,7 +9,7 @@ def run_e2e_test(timeout=10):
 
     engine = FacialEngine()
 
-    logger.info("Starting FacialEngine...")
+    logger.info("Starting FacialEngine... ")
     if not engine.start_detection():
         logger.error("Camera failed to open. Test failed.")
         return
@@ -17,12 +18,12 @@ def run_e2e_test(timeout=10):
 
     start_time = time.time()
     emotion_detected = False
-
+    
+    key = cv2.waitKey(1) & 0xFF
     while time.time() - start_time < timeout:
         if not engine.is_detection_running():
             logger.error("Detection stopped unexpectedly. Test failed.")
             break
-
         # You could hook into the engine to expose last detected emotion if needed
         # For now, we assume if it's running and displaying, it's working
         time.sleep(1)
@@ -34,4 +35,4 @@ def run_e2e_test(timeout=10):
     logger.info("✅ E2E Test Passed (Camera opened and detection ran for %d seconds)", timeout)
 
 if __name__ == "__main__":
-    run_e2e_test()
+    run_e2e_test(100)
