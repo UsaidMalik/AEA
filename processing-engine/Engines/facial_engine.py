@@ -5,8 +5,7 @@ import threading
 from utils.buffer_parser import parse_buffer
 from collections import deque
 import math
-from ..DBWriter import DBWriter
-from ..Alerter import Alerter
+from DBWriter.DBWriter import DBWriter
 import datetime 
 
 class FacialEngine:
@@ -39,7 +38,6 @@ class FacialEngine:
         self.service_name = "camera_events" # MAGIC STRING AS MONGODB COLLECTION NAME
         # lowkey no idea what the below does will have to google it
         self.db_writer = DBWriter()
-        self.alerter = Alerter()
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
 
@@ -52,7 +50,8 @@ class FacialEngine:
         self.detection_thread = None
         self.fps = 0 # must be set by the initializer
         self.last_greatest_emotion = None # the last greatest emotion that was detected (used to avoid spamming the database with the same emotion)
-        
+        self.is_in_violation = False # is the system currently in a violation state
+
     def start_detection(self):
         """Start the emotion detection process in a separate thread"""
         if self.is_running:
@@ -113,10 +112,10 @@ class FacialEngine:
 
             # do a check for the banned emotions
             self.last_greatest_emotion = parse_buffer(self.safety_buffer, self.minimum_emotion_percentage, self.safety_buffer_max_size)
-            if self.last_greatest_emotion in self.action_config['banned_emotions']:
+            if self.last_greatest_emotion in self.action_config['banned_emotions'] and not self.is_in_violation:
                 self.onViolation() # this function is called when a violation happens and handles everything else
                 # it might be the case to pause everything here as well ?
-            
+                self.is_in_violation = True # to avoid spamming the database
             
             # Display the frame
             cv2.imshow(self.window_name, processed_frame)
@@ -199,13 +198,13 @@ class FacialEngine:
         """
         self.db_writer.write_entry(
             collection=self.service_name,
-            event={
-                "session_id": self.session_id,
+            data={
+                "session_id": str(self.session_id), # must be a string to be stored in mongodb
                 "ts": datetime.datetime.utcnow(),
                 # i think this should be changed to the last greatest emotion
                 "presence": {
-                    "state": self.last_greatest_emotion,  # or however you detect presence
-                    "confidence": self.last_presence_confidence
+                    "state": "",  # this is also fake
+                    "confidence": "" # this is not a real thing
                 },
                 # we dont need this
                 "posture": {

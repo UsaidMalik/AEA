@@ -1,17 +1,18 @@
 import os
 import datetime
 from pymongo import MongoClient
-
+from dotenv import load_dotenv
 
 class DBWriter:
     def __init__(self):
         # Pull env vars
+        load_dotenv()  # Load environment variables from .env file
         db_uri = os.getenv("DATABASE_URI", "mongodb")
-        db_port = int(os.getenv("DATABASE_PORT", 27017))
         db_name = os.getenv("DATABASE_NAME", "aea_local")
 
         # Create MongoDB client
-        self.client = MongoClient(host=db_uri, port=db_port)
+        print(db_uri, db_name)
+        self.client = MongoClient(host=db_uri)
 
         # You can choose a default database name here
         self.db = self.client[db_name]
