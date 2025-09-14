@@ -167,3 +167,23 @@ class FacialEngine:
         
         self.logger.info(f"Detection parameters updated: scale_factor={self.scale_factor}, "
                         f"min_neighbors={self.min_neighbors}, min_size={self.min_size}")
+        
+import time
+
+if __name__ == "__main__":
+    engine = FacialEngine(camera_index=0)  # Use 0 or another index if needed
+    if engine.start_detection():
+        print("Emotion detection started. Press 'q' to quit.")
+    else:
+        print("Could not start emotion detection.")
+    
+    # Keep main thread alive while detection runs
+    try:
+        while engine.is_detection_running():
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        print("Interrupted by user.")
+    
+    engine.stop_detection()
+    print("Emotion detection stopped.")
+
