@@ -89,18 +89,27 @@ Please generate a JSON configuration that matches this structure exactly. Use ap
 
     def save_config_to_file(self, json_config: str) -> str:
         """
-        Save the generated JSON configuration to a file in the current directory.
+        Save the generated JSON configuration to a file in the configs directory.
         """
         try:
+            # Get the path to the configs directory (two levels up from current script)
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            configs_dir = os.path.join(current_dir, "..", "..", "configs")
+            configs_dir = os.path.abspath(configs_dir)
+            
+            # Create configs directory if it doesn't exist
+            os.makedirs(configs_dir, exist_ok=True)
+            
             # Generate filename with timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"study_config_{timestamp}.json"
+            filepath = os.path.join(configs_dir, filename)
             
-            # Save to current directory
-            with open(filename, 'w') as f:
+            # Save to configs directory
+            with open(filepath, 'w') as f:
                 f.write(json_config)
             
-            return filename
+            return filepath
         except Exception as e:
             return None
 
