@@ -237,5 +237,6 @@ def launch_gradio_ui(chatbot_instance, q):
             inputs=[msg, chatbot_widget],
             outputs=[chatbot_widget, msg]
         )
-
-    app.launch()
+    
+    # Launch the Gradio app and force it to open in Edge
+    app.launch(inbrowser=True)
