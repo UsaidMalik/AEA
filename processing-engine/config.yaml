@@ -1,0 +1,5 @@
+api_key: "MR4BMP7-QWJ4SQP-N68E5X8-8Z3YS2Q"
+model_server_base_url: "http://localhost:3001/api/v1"
+workspace_slug: "aea"
+stream: false
+stream_timeout: 600
