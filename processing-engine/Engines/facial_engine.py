@@ -214,7 +214,7 @@ class FacialEngine:
                 "affect": {
                     "label": self.last_greatest_emotion,  # e.g., "happy"
                     "confidence": self.minimum_emotion_percentage # the reasoning for this 
-                    # is taht if it has been there for a while then it is probably that emotion
+                    # is that if it has been there for a while then it is probably that emotion
                     # not crazy about this but it will do for now
                 },
                 "schema_version": 1

@@ -14,7 +14,7 @@ def main():
     session_id = uuid.uuid4() # the session id (correlation id) passed to teh different services
     # hard coded for now later this should be handled by AI 
     while user_action not in config_paths:
-        print(f"Sorry, I don't recognize the action '{user_action}'. Please choose from {list(action_config.keys())}.")
+        print(f"Sorry, I don't recognize the action '{user_action}'. Please choose from {list(config_paths.keys())}.")
         user_action = input("what would you like to do today? (write_essay, study): ").strip().lower()
     
 
