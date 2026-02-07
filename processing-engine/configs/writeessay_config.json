@@ -1,5 +1,5 @@
 { 
-    "banned_emotions": ["anger", "fear"],
+    "banned_emotions": ["angry", "fear"],
     "allowed_emotions": ["neutral", "happy"],
     "banned_websites": ["reddit.com", "discord.com"],
     "allowed_websites": ["researchgate.net", "scholar.google.com"],

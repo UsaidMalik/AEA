@@ -72,7 +72,7 @@ class FacialEngine:
             
 
             # starting the thread here
-            self.detection_thread = threading.Thread(target=self._detection_loop)
+            self.detection_thread = threading.Thread(target=self._detection_loop, daemon=True)
             self.detection_thread.start()
             self.logger.info("Emotion detection started")
     

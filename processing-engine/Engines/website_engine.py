@@ -32,7 +32,7 @@ class WebsiteEngine:
         self.last_violation_url = None
         
         #Logging 
-        logging.basicConfig(level=logging.INFO)
+        logging.basicConfig(level=logging.DEBUG)
         self.logger = logging.getLogger(__name__)   
  
 
@@ -43,7 +43,7 @@ class WebsiteEngine:
             return False
         try:
             self.is_running = True
-            self.detection_thread = threading.Thread(target = self._detection_loop)
+            self.detection_thread = threading.Thread(target = self._detection_loop, daemon=True)
             self.detection_thread.start()
             self.logger.info("Website monitoring started")
             return True
@@ -111,12 +111,13 @@ class WebsiteEngine:
         """Main detection loop - runs in separate thread """
         while self.is_running:
             window_title, process_name = self._get_active_window_info()
-            
+            self.logger.debug(f"Active window: '{window_title}' (Process: {process_name})")
             if window_title and process_name:
                 #check if user on a banned website
                 for banned_site in self.banned_websites:
-                    #check if banned site is in the window title 
-                    if banned_site.lower() in window_title.lower():
+                    # strip TLD (.com, .org, etc.) since Chrome doesn't show it in the title
+                    site_name = banned_site.lower().rsplit(".", 1)[0]
+                    if site_name in window_title.lower():
                         if self.last_violation_url != banned_site:
                             self.on_violation(banned_site, window_title)
                             self.last_violation_url = banned_site

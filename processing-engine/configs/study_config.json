@@ -1,7 +1,7 @@
 { 
-    "banned_emotions": ["anger", "disgust", "fear", "sadness", "missing"],
-    "allowed_emotions": ["neutral", "happy", "calm"],
-    "banned_websites": ["youtube.com", "facebook.com", "twitter.com", "instagram.com", "tiktok.com"],
+    "banned_emotions": ["neutral", "angry", "disgust", "fear", "sad", "missing"],
+    "allowed_emotions": ["happy", "calm"],
+    "banned_websites": ["youtube.com", "facebook.com", "twitter.com", "instagram.com", "tiktok.com", "linkedin.com"],
     "allowed_websites": ["khanacademy.org", "wikipedia.org"],
     "banned_apps": ["discord.exe", "tiktok.exe"],
     "allowed_apps": ["word.exe", "onenote.exe"],
