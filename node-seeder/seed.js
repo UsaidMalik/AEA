@@ -78,24 +78,22 @@ async function run() {
         ts_open: new Date(now.getTime() + 5 * 60000),
         ts_close: new Date(now.getTime() + 15 * 60000),
         domain: "wikipedia.org",
-        url_hash: "hash_wikipedia",
+        window_title: "Wikipedia — Main Page - Chrome",
         policy: { allowed: true, rule: "web_allow" },
         action_taken: "ignored",
         notification: { sent: false },
-        affect: { label: "neutral", confidence: 0.78 },
-        schema_version: 1,
+        schema_version: 2,
       },
       {
         session_id,
         ts_open: new Date(now.getTime() + 20 * 60000),
         ts_close: new Date(now.getTime() + 23 * 60000),
         domain: "instagram.com",
-        url_hash: "hash_instagram",
+        window_title: "Instagram - Chrome",
         policy: { allowed: false, rule: "web_deny" },
         action_taken: "notified",
         notification: { sent: true, ts: new Date(now.getTime() + 20 * 60000) },
-        affect: { label: "happy", confidence: 0.91 },
-        schema_version: 1,
+        schema_version: 2,
       },
     ]);
 
@@ -165,25 +163,23 @@ async function run() {
           deny: ["youtube.com"],
           wildcard: true,
         },
+        emotion: {
+          allow: ["happy", "calm"],
+          deny: ["angry", "fear", "sad", "missing"],
+        },
         vision: {
           require_presence: true,
           away_grace_sec: 5,
         },
-        nudges: {
-          cooldown_sec: 30,
-          channels: ["toast", "banner"],
-        },
-        actions: {
-          on_ban: "notify",
-          on_away: "notify",
-          on_affect: "suggest",
-        },
+        session_time_limit: 3600,
+        enforcement_level: "strict",
+        camera_displayed: true,
       },
       source: "preset",
       prompt: null,
       created_ts: now,
       updated_ts: now,
-      schema_version: 1,
+      schema_version: 2,
     });
 
     // 7. predictions

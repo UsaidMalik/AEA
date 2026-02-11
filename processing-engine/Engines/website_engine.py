@@ -6,39 +6,44 @@ from DBWriter.DBWriter import DBWriter
 import platform
 import subprocess
 
-#Windows=specific for getting active window/url
+#Windows-specific for getting active window/url
 PLATFORM = platform.system()
 if PLATFORM == "Windows":
     import win32gui #pip install pywin32
-    import win32process 
+    import win32process
     import psutil  #pip install psutil
 
-class WebsiteEngine: 
-    def __init__(self, action_config, session_id=None, poll_interval=2): 
+class WebsiteEngine:
+    def __init__(self, action_config, session_id=None, poll_interval=2):
         self.session_id = session_id
         self.action_config = action_config
         self.poll_interval = poll_interval
 
-        #Banned websites from config
-        self.banned_websites = action_config.get("banned_websites", [])
-        
-        #Runtime state 
+        # Web policy from config (nested structure)
+        web_policy = action_config.get("web", {})
+        self.banned_websites = web_policy.get("deny", [])
+        self.allowed_websites = web_policy.get("allow", [])
+
+        #Runtime state
         self.is_running = False
         self.db_writer = DBWriter()
         self.service_name = "website_events"
         self.detection_thread = None
 
-        #Track last violation to avoid spam (like FacialEngine)
-        self.last_violation_url = None
-        
-        #Logging 
+        # Track current site for transition detection (like app_engine)
+        self.current_domain = None
+        self.current_window_title = None
+        self.current_site_ts_open = None
+        self.current_site_policy = None
+
+        #Logging
         logging.basicConfig(level=logging.DEBUG)
-        self.logger = logging.getLogger(__name__)   
- 
+        self.logger = logging.getLogger(__name__)
+
 
     def start_detection(self):
         """Start the website monitoring process in a separate thread"""
-        if self.is_running: 
+        if self.is_running:
             self.logger.warning("Website monitoring is already running")
             return False
         try:
@@ -51,14 +56,16 @@ class WebsiteEngine:
             self.logger.error(f"Error starting website detection: {e}")
             self.is_running = False
             return False
-     
-    def stop_detection(self): 
+
+    def stop_detection(self):
         """Stop the website monitoring process"""
         if not self.is_running:
             self.logger.warning("Website monitoring is not running")
             return False
         try:
             self.is_running = False
+            # Flush the currently tracked site before joining
+            self._flush_current_site()
             if self.detection_thread:
                 self.detection_thread.join()
             self.logger.info("Website monitoring stopped")
@@ -66,8 +73,8 @@ class WebsiteEngine:
         except Exception as e:
             self.logger.error(f"Error stopping website detection: {e}")
             return False
-    
-    
+
+
     def _get_active_window_info(self):
         """Get active window title and process - works on both platforms"""
         try:
@@ -81,7 +88,7 @@ class WebsiteEngine:
 
     def _get_active_window_windows(self):
         """Get the title and URL of the currently active window (Windows only)"""
-        try: 
+        try:
             hwnd = win32gui.GetForegroundWindow()
             window_title = win32gui.GetWindowText(hwnd)
 
@@ -106,40 +113,102 @@ class WebsiteEngine:
             self.logger.error(f"Error getting active window info on Linux: {e}")
             return None, None
 
-    
+    def _detect_domain(self, window_title):
+        """Try to detect a known domain from the window title.
+        Returns the matched domain string or None.
+        """
+        title_lower = window_title.lower()
+        # Check banned sites first
+        for site in self.banned_websites:
+            site_name = site.lower().rsplit(".", 1)[0]
+            if site_name in title_lower:
+                return site
+        # Check allowed sites
+        for site in self.allowed_websites:
+            site_name = site.lower().rsplit(".", 1)[0]
+            if site_name in title_lower:
+                return site
+        return None
+
+    def _determine_policy(self, domain):
+        """Determine policy for a given domain.
+        Returns dict matching expected schema: { allowed: bool, rule: str }
+        """
+        dname = domain.lower()
+        for banned in self.banned_websites:
+            if banned.lower() == dname:
+                return {"allowed": False, "rule": "web_deny"}
+        for allowed in self.allowed_websites:
+            if allowed.lower() == dname:
+                return {"allowed": True, "rule": "web_allow"}
+        # Site not in either list — allowed by default
+        return {"allowed": True, "rule": "web_unlisted"}
+
+    def _flush_current_site(self):
+        """Write the currently tracked site to MongoDB and reset state."""
+        if self.current_domain is None:
+            return
+
+        ts_close = datetime.datetime.utcnow()
+        is_violation = not self.current_site_policy.get("allowed", True)
+
+        self.db_writer.write_entry(
+            collection=self.service_name,
+            data={
+                "session_id": str(self.session_id),
+                "ts_open": self.current_site_ts_open,
+                "ts_close": ts_close,
+                "domain": self.current_domain,
+                "window_title": self.current_window_title,
+                "policy": self.current_site_policy,
+                "action_taken": "notified" if is_violation else "ignored",
+                "notification": {
+                    "sent": is_violation,
+                    "ts": ts_close if is_violation else None
+                },
+                "schema_version": 2
+            }
+        )
+
+        # Reset tracking state
+        self.current_domain = None
+        self.current_window_title = None
+        self.current_site_ts_open = None
+        self.current_site_policy = None
+
     def _detection_loop(self):
         """Main detection loop - runs in separate thread """
         while self.is_running:
             window_title, process_name = self._get_active_window_info()
             self.logger.debug(f"Active window: '{window_title}' (Process: {process_name})")
+
             if window_title and process_name:
-                #check if user on a banned website
-                for banned_site in self.banned_websites:
-                    # strip TLD (.com, .org, etc.) since Chrome doesn't show it in the title
-                    site_name = banned_site.lower().rsplit(".", 1)[0]
-                    if site_name in window_title.lower():
-                        if self.last_violation_url != banned_site:
-                            self.on_violation(banned_site, window_title)
-                            self.last_violation_url = banned_site
-                        break
-                else: 
-                        self.last_violation_url = None
+                detected_domain = self._detect_domain(window_title)
+
+                if detected_domain != self.current_domain:
+                    # Site transition: flush the old site, start tracking the new one
+                    self._flush_current_site()
+
+                    if detected_domain:
+                        policy = self._determine_policy(detected_domain)
+                        self.current_domain = detected_domain
+                        self.current_window_title = window_title
+                        self.current_site_ts_open = datetime.datetime.utcnow()
+                        self.current_site_policy = policy
+
+                        self.logger.debug(
+                            f"Site transition: {detected_domain} "
+                            f"(allowed={policy['allowed']}, rule={policy['rule']})"
+                        )
+
+                        if not policy["allowed"]:
+                            self.logger.warning(
+                                f"Website violation detected: {detected_domain} "
+                                f"in window '{window_title}'"
+                            )
+                else:
+                    # Same site still in foreground — update window title in case it changed
+                    if self.current_domain:
+                        self.current_window_title = window_title
+
             time.sleep(self.poll_interval)
-
-    def on_violation(self, banned_site, window_title):
-        """Handle a website violation event """
-        self.logger.warning (f"Website violation detected: {banned_site} in window '{window_title}'")
-        self.db_writer.write_entry(
-            collection= self.service_name,
-            data={
-                "session_id": str(self.session_id),
-                "ts": datetime.datetime.utcnow(),
-                "source": "website",
-                "event_type": "violation",
-                "banned_site": banned_site,
-                "window_title": window_title,
-                "schema_version": 1
-            }
-        )
-
-            

@@ -1,15 +1,23 @@
-{ 
-    "banned_emotions": ["neutral", "angry", "disgust", "fear", "sad", "missing"],
-    "allowed_emotions": ["happy", "calm"],
-    "banned_websites": ["youtube.com", "facebook.com", "twitter.com", "instagram.com", "tiktok.com", "linkedin.com"],
-    "allowed_websites": ["khanacademy.org", "wikipedia.org"],
-    "banned_apps": ["discord.exe", "tiktok.exe"],
-    "allowed_apps": ["word.exe", "onenote.exe"],
-    "session_time_limit": 3600,
-    "enforcement_level": "strict",
-    "notification_preferences": "popup",
-    "activity_log_enable": true,
-    "custom_triggers": ["absent_for_60s", "multi_face_detected"],
-    "action": "study",
-    "camera_displayed": true
+{
+  "action": "study",
+  "apps": {
+    "allow": ["word.exe", "onenote.exe"],
+    "deny": ["discord.exe", "tiktok.exe"]
+  },
+  "web": {
+    "allow": ["khanacademy.org", "wikipedia.org"],
+    "deny": ["youtube.com", "facebook.com", "twitter.com", "instagram.com", "tiktok.com", "linkedin.com"],
+    "wildcard": true
+  },
+  "emotion": {
+    "allow": ["happy", "calm"],
+    "deny": ["neutral", "angry", "disgust", "fear", "sad", "missing"]
+  },
+  "vision": {
+    "require_presence": true,
+    "away_grace_sec": 5
+  },
+  "session_time_limit": 3600,
+  "enforcement_level": "strict",
+  "camera_displayed": true
 }

@@ -112,7 +112,7 @@ class FacialEngine:
 
             # do a check for the banned emotions
             self.last_greatest_emotion = parse_buffer(self.safety_buffer, self.minimum_emotion_percentage, self.safety_buffer_max_size)
-            if self.last_greatest_emotion in self.action_config['banned_emotions'] and not self.is_in_violation:
+            if self.last_greatest_emotion in self.action_config.get("emotion", {}).get("deny", []) and not self.is_in_violation:
                 self.onViolation() # this function is called when a violation happens and handles everything else
                 # it might be the case to pause everything here as well ?
                 self.is_in_violation = True # to avoid spamming the database

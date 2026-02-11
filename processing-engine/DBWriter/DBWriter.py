@@ -29,3 +29,40 @@ class DBWriter:
 
         result = self.db[collection].insert_one(data)
         return result.inserted_id
+
+    def find_one(self, collection, query):
+        """
+        Find a single document matching the query.
+        :param collection: str - name of the MongoDB collection
+        :param query: dict - MongoDB query filter
+        :return: dict or None
+        """
+        return self.db[collection].find_one(query)
+
+    def find_entries(self, collection, query):
+        """
+        Find all documents matching the query.
+        :param collection: str - name of the MongoDB collection
+        :param query: dict - MongoDB query filter
+        :return: list of matching documents
+        """
+        return list(self.db[collection].find(query))
+
+    def update_entry(self, collection, query, update):
+        """
+        Update a single document in the specified collection.
+        :param collection: str - name of the MongoDB collection
+        :param query: dict - MongoDB query filter
+        :param update: dict - MongoDB update operations (e.g., {"$set": {...}})
+        :return: UpdateResult
+        """
+        return self.db[collection].update_one(query, update)
+
+    def count_entries(self, collection, query):
+        """
+        Count documents matching the query.
+        :param collection: str - name of the MongoDB collection
+        :param query: dict - MongoDB query filter
+        :return: int
+        """
+        return self.db[collection].count_documents(query)
