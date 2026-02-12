@@ -2,6 +2,9 @@ import { StrictMode, useMemo } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ThemeProvider, createTheme, CssBaseline, useMediaQuery } from '@mui/material'
 import './index.css'
+import {BrowserRouter} from 'react-router-dom'
+import { UserProvider } from './context/UserContext.tsx'
+
 import App from './App.tsx'
 
 function Root() {
@@ -22,7 +25,11 @@ function Root() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <App />
+      <BrowserRouter>
+        <UserProvider>
+          <App />
+        </UserProvider>
+      </BrowserRouter>
     </ThemeProvider>
   )
 }

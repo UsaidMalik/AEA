@@ -112,6 +112,35 @@ app.get('/api/predictions', async (req, res) => {
     res.json({ data });
 });
 
+// POST endpoint to create a new config
+app.post('/api/configs', async (req, res) => {
+    try {
+        const { name, json, source } = req.body;
+        if (!name || !json || !json.action) {
+            return res.status(400).json({ success: false, error: 'Missing required fields: name, json.action' });
+        }
+        const existing = await db.collection('configs').findOne({ name });
+        if (existing) {
+            return res.status(409).json({ success: false, error: `Config "${name}" already exists` });
+        }
+        const now = new Date();
+        const doc = {
+            name,
+            json,
+            source: source || 'preset',
+            prompt: null,
+            created_ts: now,
+            updated_ts: now,
+            schema_version: 2,
+        };
+        await db.collection('configs').insertOne(doc);
+        res.status(201).json({ success: true, data: doc });
+    } catch (error) {
+        console.error('Error creating config:', error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+});
+
 // POST endpoint for AI query (Ollama)
 app.post('/api/query', async (req, res) => {
     const { question, session_id } = req.body;
