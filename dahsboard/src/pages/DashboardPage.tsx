@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import {
     Container, Typography, Stack, TextField, Button,
-    CircularProgress, Box, Paper, Grid,
+    CircularProgress, Box, Paper, Grid, Avatar,
 } from '@mui/material'
+import { Dashboard, Search, SmartToy } from '@mui/icons-material'
 
 import SessionOverview from '../components/sessionOverview'
 import AppsTable from '../components/appsTable'
@@ -65,17 +66,25 @@ const DashboardPage = () => {
 
     return (
         <Container maxWidth="lg" sx={{ py: 4 }}>
-            <Typography variant="h4" fontWeight={700} mb={1}>Session Dashboard</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                <Avatar sx={{ bgcolor: '#e8eaf6', color: '#5c6bc0' }}>
+                    <Dashboard />
+                </Avatar>
+                <Typography variant="h4" fontWeight={700}>Session Dashboard</Typography>
+            </Box>
             <Typography variant="body2" color="text.secondary" mb={3}>
                 {sessionId ? `Session: ${sessionId}` : 'No active session'}
             </Typography>
 
             <Stack spacing={3}>
                 {/* AI Query */}
-                <Paper sx={{ p: 3 }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
-                        AI Assistant
-                    </Typography>
+                <Paper elevation={0} sx={{
+                    p: 3, border: '1px solid', borderColor: 'divider', borderRadius: 3,
+                }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                        <SmartToy sx={{ color: '#5c6bc0' }} />
+                        <Typography variant="subtitle1" fontWeight={600}>AI Assistant</Typography>
+                    </Box>
                     <Stack direction="row" spacing={2}>
                         <TextField
                             label="Ask a question about your session..."
@@ -88,16 +97,21 @@ const DashboardPage = () => {
                         />
                         <Button
                             variant="contained"
+                            startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : <Search />}
                             onClick={handleSearch}
                             disabled={isLoading || !sessionId}
-                            sx={{ minWidth: 100 }}
+                            sx={{
+                                minWidth: 110, textTransform: 'none', borderRadius: 2,
+                                background: 'linear-gradient(135deg, #5c6bc0, #7c4dff)',
+                                '&:hover': { background: 'linear-gradient(135deg, #3f51b5, #651fff)' },
+                            }}
                         >
-                            {isLoading ? <CircularProgress size={20} /> : 'Search'}
+                            Search
                         </Button>
                     </Stack>
 
                     {ollamaResponse && (
-                        <Paper variant="outlined" sx={{ mt: 2, p: 2, bgcolor: 'action.hover' }}>
+                        <Paper variant="outlined" sx={{ mt: 2, p: 2, bgcolor: 'action.hover', borderRadius: 2 }}>
                             <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
                                 {ollamaResponse}
                             </Typography>
@@ -105,7 +119,7 @@ const DashboardPage = () => {
                     )}
                 </Paper>
 
-                {/* Session Overview (includes FocusChart) */}
+                {/* Session Overview */}
                 <SessionOverview />
 
                 {/* Web + Apps side by side */}

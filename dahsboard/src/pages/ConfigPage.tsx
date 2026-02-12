@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import {
     Container, Typography, Card, CardContent, TextField, Button,
     Select, MenuItem, Switch, FormControlLabel, Autocomplete,
-    Chip, Stack, Snackbar, Alert,
+    Chip, Stack, Snackbar, Alert, Box, Avatar, Grid, IconButton,
 } from '@mui/material'
+import { Computer, Add, Close, Save, ArrowBack } from '@mui/icons-material'
 
 const ConfigPage = () => {
     const navigate = useNavigate()
@@ -12,7 +13,7 @@ const ConfigPage = () => {
     // Session settings
     const [configName, setConfigName] = useState('')
     const [action, setAction] = useState('study')
-    const [duration, setDuration] = useState(60) // converted to seconds on submit
+    const [duration, setDuration] = useState(60)
     const [enforcement, setEnforcement] = useState('strict')
     const [cameraDisplayed, setCameraDisplayed] = useState(true)
     const [awayGraceSec, setAwayGraceSec] = useState(5)
@@ -92,16 +93,16 @@ const ConfigPage = () => {
     const PolicySection = ({
         label, placeholder, input, setInput, mode, setMode, allowed, denied, setAllowed, setDenied,
     }: {
-        label: string; placeholder: string;
-        input: string; setInput: (v: string) => void;
-        mode: 'allow' | 'deny'; setMode: (v: 'allow' | 'deny') => void;
-        allowed: string[]; denied: string[];
-        setAllowed: React.Dispatch<React.SetStateAction<string[]>>;
-        setDenied: React.Dispatch<React.SetStateAction<string[]>>;
+        label: string; placeholder: string
+        input: string; setInput: (v: string) => void
+        mode: 'allow' | 'deny'; setMode: (v: 'allow' | 'deny') => void
+        allowed: string[]; denied: string[]
+        setAllowed: React.Dispatch<React.SetStateAction<string[]>>
+        setDenied: React.Dispatch<React.SetStateAction<string[]>>
     }) => (
-        <Card sx={{ mb: 3 }}>
-            <CardContent>
-                <Typography variant="h6" mb={2}>{label}</Typography>
+        <Card elevation={0} sx={{ mb: 3, border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
+            <CardContent sx={{ p: 3 }}>
+                <Typography variant="h6" fontWeight={600} mb={2}>{label}</Typography>
                 <Stack direction="row" spacing={1} alignItems="center" mb={2}>
                     <TextField
                         value={input}
@@ -115,22 +116,49 @@ const ConfigPage = () => {
                         <MenuItem value="allow">Allow</MenuItem>
                         <MenuItem value="deny">Deny</MenuItem>
                     </Select>
-                    <Button variant="outlined" onClick={() => handleAdd(input, setInput, mode, setAllowed, setDenied)}>
+                    <Button
+                        variant="contained"
+                        startIcon={<Add />}
+                        onClick={() => handleAdd(input, setInput, mode, setAllowed, setDenied)}
+                        sx={{
+                            textTransform: 'none', borderRadius: 2,
+                            background: 'linear-gradient(135deg, #5c6bc0, #7c4dff)',
+                            '&:hover': { background: 'linear-gradient(135deg, #3f51b5, #651fff)' },
+                        }}
+                    >
                         Add
                     </Button>
                 </Stack>
-                <Typography variant="body2" fontWeight={600} color="success.main">Allowed:</Typography>
-                <Stack direction="row" flexWrap="wrap" gap={1} mb={1} minHeight={32}>
+
+                {/* List items */}
+                <Stack spacing={0.5}>
                     {allowed.map(a => (
-                        <Chip key={a} label={a} color="success" size="small"
-                            onDelete={() => setAllowed(prev => prev.filter(x => x !== a))} />
+                        <Box key={`allow-${a}`} sx={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            py: 1, px: 2, borderRadius: 2, bgcolor: 'action.hover',
+                        }}>
+                            <Typography variant="body2" fontWeight={500}>{a}</Typography>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                                <Chip label="Allowed" size="small" color="success" variant="outlined" />
+                                <IconButton size="small" onClick={() => setAllowed(prev => prev.filter(x => x !== a))}>
+                                    <Close sx={{ fontSize: 16 }} />
+                                </IconButton>
+                            </Stack>
+                        </Box>
                     ))}
-                </Stack>
-                <Typography variant="body2" fontWeight={600} color="error.main">Denied:</Typography>
-                <Stack direction="row" flexWrap="wrap" gap={1} minHeight={32}>
                     {denied.map(a => (
-                        <Chip key={a} label={a} color="error" size="small"
-                            onDelete={() => setDenied(prev => prev.filter(x => x !== a))} />
+                        <Box key={`deny-${a}`} sx={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            py: 1, px: 2, borderRadius: 2, bgcolor: 'action.hover',
+                        }}>
+                            <Typography variant="body2" fontWeight={500}>{a}</Typography>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                                <Chip label="Blocked" size="small" color="error" variant="outlined" />
+                                <IconButton size="small" onClick={() => setDenied(prev => prev.filter(x => x !== a))}>
+                                    <Close sx={{ fontSize: 16 }} />
+                                </IconButton>
+                            </Stack>
+                        </Box>
                     ))}
                 </Stack>
             </CardContent>
@@ -139,56 +167,69 @@ const ConfigPage = () => {
 
     return (
         <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
-            <Typography variant="h4" fontWeight={700} mb={3}>New Configuration</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                <Avatar sx={{ bgcolor: '#e8eaf6', color: '#5c6bc0' }}>
+                    <Computer />
+                </Avatar>
+                <Typography variant="h4" fontWeight={700}>Create New Configuration</Typography>
+            </Box>
+            <Typography variant="body2" color="text.secondary" mb={4}>
+                Configure your custom PC session settings, applications, and policies
+            </Typography>
 
-            {/* Session Settings */}
-            <Card sx={{ mb: 3 }}>
-                <CardContent>
-                    <Typography variant="h6" mb={2}>Session Settings</Typography>
-                    <Stack spacing={2}>
-                        <TextField
-                            label="Config Name"
-                            value={configName}
-                            onChange={e => setConfigName(e.target.value)}
-                            fullWidth
-                        />
-                        <Autocomplete
-                            freeSolo
-                            options={['study', 'write_essay']}
-                            value={action}
-                            onInputChange={(_e, val) => setAction(val)}
-                            renderInput={(params) => <TextField {...params} label="Action Type" />}
-                        />
-                        <TextField
-                            label="Duration (minutes)"
-                            type="number"
-                            value={duration}
-                            onChange={e => setDuration(Number(e.target.value))}
-                            fullWidth
-                        />
-                    </Stack>
+            {/* Session Settings — row layout */}
+            <Card elevation={0} sx={{ mb: 3, border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
+                <CardContent sx={{ p: 3 }}>
+                    <Typography variant="h6" fontWeight={600} mb={2}>Session Settings</Typography>
+                    <Grid container spacing={2}>
+                        <Grid size={{ xs: 12, md: 5 }}>
+                            <TextField
+                                label="Session Name"
+                                placeholder="e.g., Development Session"
+                                value={configName}
+                                onChange={e => setConfigName(e.target.value)}
+                                fullWidth
+                                size="small"
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                            <Autocomplete
+                                freeSolo
+                                options={['study', 'write_essay']}
+                                value={action}
+                                onInputChange={(_e, val) => setAction(val)}
+                                renderInput={params => <TextField {...params} label="Session Type" size="small" />}
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 3 }}>
+                            <TextField
+                                label="Duration (minutes)"
+                                type="number"
+                                value={duration}
+                                onChange={e => setDuration(Number(e.target.value))}
+                                fullWidth
+                                size="small"
+                            />
+                        </Grid>
+                    </Grid>
                 </CardContent>
             </Card>
 
-            {/* Application Policies */}
+            {/* Policy Sections */}
             <PolicySection
-                label="Application Policies" placeholder="e.g. discord.exe"
+                label="Application Policies" placeholder="Add application name"
                 input={appInput} setInput={setAppInput}
                 mode={appMode} setMode={setAppMode}
                 allowed={allowedApps} denied={deniedApps}
                 setAllowed={setAllowedApps} setDenied={setDeniedApps}
             />
-
-            {/* Web Policies */}
             <PolicySection
-                label="Web Policies" placeholder="e.g. youtube.com"
+                label="Web Policies" placeholder="Add website URL"
                 input={webInput} setInput={setWebInput}
                 mode={webMode} setMode={setWebMode}
                 allowed={allowedWebs} denied={deniedWebs}
                 setAllowed={setAllowedWebs} setDenied={setDeniedWebs}
             />
-
-            {/* Emotion Policies */}
             <PolicySection
                 label="Emotion Policies" placeholder="e.g. angry, happy, calm"
                 input={emotionInput} setInput={setEmotionInput}
@@ -198,43 +239,68 @@ const ConfigPage = () => {
             />
 
             {/* Settings */}
-            <Card sx={{ mb: 3 }}>
-                <CardContent>
-                    <Typography variant="h6" mb={2}>Settings</Typography>
-                    <Stack spacing={2}>
-                        <TextField
-                            select
-                            label="Enforcement Level"
-                            value={enforcement}
-                            onChange={e => setEnforcement(e.target.value)}
-                            fullWidth
-                        >
-                            <MenuItem value="strict">Strict</MenuItem>
-                            <MenuItem value="lenient">Lenient</MenuItem>
-                        </TextField>
-                        <TextField
-                            label="Away Grace Period (seconds)"
-                            type="number"
-                            value={awayGraceSec}
-                            onChange={e => setAwayGraceSec(Number(e.target.value))}
-                            fullWidth
-                        />
-                        <FormControlLabel
-                            control={<Switch checked={cameraDisplayed} onChange={e => setCameraDisplayed(e.target.checked)} />}
-                            label="Camera Displayed"
-                        />
-                    </Stack>
+            <Card elevation={0} sx={{ mb: 3, border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
+                <CardContent sx={{ p: 3 }}>
+                    <Typography variant="h6" fontWeight={600} mb={2}>Settings</Typography>
+                    <Grid container spacing={2} alignItems="center">
+                        <Grid size={{ xs: 12, md: 4 }}>
+                            <TextField
+                                select
+                                label="Enforcement Level"
+                                value={enforcement}
+                                onChange={e => setEnforcement(e.target.value)}
+                                fullWidth
+                                size="small"
+                            >
+                                <MenuItem value="strict">Strict</MenuItem>
+                                <MenuItem value="lenient">Lenient</MenuItem>
+                            </TextField>
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                            <TextField
+                                label="Away Grace Period (seconds)"
+                                type="number"
+                                value={awayGraceSec}
+                                onChange={e => setAwayGraceSec(Number(e.target.value))}
+                                fullWidth
+                                size="small"
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                            <FormControlLabel
+                                control={<Switch checked={cameraDisplayed} onChange={e => setCameraDisplayed(e.target.checked)} />}
+                                label="Camera Displayed"
+                            />
+                        </Grid>
+                    </Grid>
                 </CardContent>
             </Card>
 
             {/* Actions */}
-            <Button variant="contained" size="large" onClick={handleSubmit}
-                disabled={!configName.trim() || !action}>
-                Save Configuration
-            </Button>
-            <Button variant="text" onClick={() => navigate('/action')} sx={{ ml: 2 }}>
-                Cancel
-            </Button>
+            <Stack direction="row" spacing={2}>
+                <Button
+                    variant="contained"
+                    size="large"
+                    startIcon={<Save />}
+                    onClick={handleSubmit}
+                    disabled={!configName.trim() || !action}
+                    sx={{
+                        px: 4, borderRadius: 2, textTransform: 'none', fontWeight: 600,
+                        background: 'linear-gradient(135deg, #5c6bc0, #7c4dff)',
+                        '&:hover': { background: 'linear-gradient(135deg, #3f51b5, #651fff)' },
+                    }}
+                >
+                    Save Configuration
+                </Button>
+                <Button
+                    variant="text"
+                    startIcon={<ArrowBack />}
+                    onClick={() => navigate('/action')}
+                    sx={{ textTransform: 'none' }}
+                >
+                    Cancel
+                </Button>
+            </Stack>
 
             <Snackbar open={snackbar.open} autoHideDuration={3000}
                 onClose={() => setSnackbar(s => ({ ...s, open: false }))}>

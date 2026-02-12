@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react'
 import {
     Container, Typography, Card, CardContent, Box, Grid,
-    CircularProgress, MenuItem, TextField,
+    CircularProgress, MenuItem, TextField, Avatar, Chip,
 } from '@mui/material'
+import {
+    Timeline, People, AccessTime, TrendingUp,
+    CalendarToday,
+} from '@mui/icons-material'
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell,
@@ -29,14 +33,38 @@ interface AppEvent {
 
 const PIE_COLORS = ['#2196f3', '#4caf50', '#ff9800', '#9c27b0', '#607d8b']
 
-const StatCard = ({ label, value, color }: { label: string; value: string; color?: string }) => (
-    <Card>
-        <CardContent>
-            <Typography variant="body2" color="text.secondary">{label}</Typography>
-            <Typography variant="h4" fontWeight={700} sx={{ color }}>{value}</Typography>
-        </CardContent>
-    </Card>
-)
+const statCardStyles = [
+    { icon: <Timeline />, color: '#5c6bc0', bg: '#e8eaf6', badge: '+12%', badgeColor: '#4caf50' },
+    { icon: <People />, color: '#4caf50', bg: '#e8f5e9', badge: '+8%', badgeColor: '#4caf50' },
+    { icon: <AccessTime />, color: '#7c4dff', bg: '#f3e5f5', badge: '-5%', badgeColor: '#ff9800' },
+    { icon: <TrendingUp />, color: '#ff9800', bg: '#fff3e0', badge: '+3%', badgeColor: '#4caf50' },
+]
+
+const StatCard = ({ label, value, color, index }: { label: string; value: string; color?: string; index: number }) => {
+    const style = statCardStyles[index]
+    return (
+        <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
+            <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                    <Avatar sx={{ width: 44, height: 44, bgcolor: style.bg, color: style.color }}>
+                        {style.icon}
+                    </Avatar>
+                    <Chip
+                        label={style.badge}
+                        size="small"
+                        sx={{
+                            fontWeight: 600, fontSize: '0.7rem', height: 22,
+                            bgcolor: style.badgeColor === '#4caf50' ? '#e8f5e9' : '#fff3e0',
+                            color: style.badgeColor,
+                        }}
+                    />
+                </Box>
+                <Typography variant="body2" color="text.secondary">{label}</Typography>
+                <Typography variant="h4" fontWeight={700} sx={{ color }}>{value}</Typography>
+            </CardContent>
+        </Card>
+    )
+}
 
 const SessionsPage = () => {
     const [sessions, setSessions] = useState<Session[]>([])
@@ -77,10 +105,11 @@ const SessionsPage = () => {
         : 0
 
     // --- Session Trends (group by day) ---
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     const trendsMap: Record<string, number> = {}
     sessions.forEach(s => {
-        const day = dayNames[new Date(s.started_at).getDay()]
+        const d = new Date(s.started_at).getDay()
+        const day = dayNames[d === 0 ? 6 : d - 1]
         trendsMap[day] = (trendsMap[day] || 0) + 1
     })
     const trendsData = dayNames.map(d => ({ day: d, sessions: trendsMap[d] || 0 }))
@@ -123,68 +152,73 @@ const SessionsPage = () => {
         { name: 'Emotion Triggers', value: violations.affect },
     ]
 
+    const chartCard = { elevation: 0 as const, sx: { height: '100%', border: '1px solid', borderColor: 'divider', borderRadius: 3 } }
+
     return (
         <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
             {/* Header */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
-                <div>
+                <Box>
                     <Typography variant="h4" fontWeight={700}>Session History & Analytics</Typography>
                     <Typography variant="body2" color="text.secondary">
                         View completed sessions and analyze historical data
                     </Typography>
-                </div>
-                <TextField
-                    select
-                    value={timeFilter}
-                    onChange={e => setTimeFilter(e.target.value)}
-                    size="small"
-                    sx={{ width: 150 }}
-                >
-                    <MenuItem value="week">This Week</MenuItem>
-                    <MenuItem value="month">This Month</MenuItem>
-                    <MenuItem value="all">All Time</MenuItem>
-                </TextField>
+                </Box>
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <CalendarToday sx={{ color: 'text.secondary', fontSize: 20 }} />
+                    <TextField
+                        select
+                        value={timeFilter}
+                        onChange={e => setTimeFilter(e.target.value)}
+                        size="small"
+                        sx={{ width: 150 }}
+                    >
+                        <MenuItem value="week">This Week</MenuItem>
+                        <MenuItem value="month">This Month</MenuItem>
+                        <MenuItem value="all">All Time</MenuItem>
+                    </TextField>
+                </Box>
             </Box>
 
             {/* Stat Cards */}
             <Grid container spacing={2} sx={{ mb: 3 }}>
                 <Grid size={{ xs: 6, md: 3 }}>
-                    <StatCard label="Active Sessions" value={String(activeSessions)} />
+                    <StatCard label="Active Sessions" value={String(activeSessions)} index={0} />
                 </Grid>
                 <Grid size={{ xs: 6, md: 3 }}>
-                    <StatCard label="Total Sessions" value={String(totalSessions)} />
+                    <StatCard label="Total Sessions" value={String(totalSessions)} index={1} />
                 </Grid>
                 <Grid size={{ xs: 6, md: 3 }}>
-                    <StatCard label="Avg Duration" value={`${avgDuration.toFixed(1)}h`} />
+                    <StatCard label="Avg Duration" value={`${avgDuration.toFixed(1)}h`} index={2} />
                 </Grid>
                 <Grid size={{ xs: 6, md: 3 }}>
                     <StatCard label="Policy Compliance" value={`${avgCompliance.toFixed(0)}%`}
-                        color={avgCompliance > 70 ? '#4caf50' : '#ff9800'} />
+                        color={avgCompliance > 70 ? '#4caf50' : '#ff9800'} index={3} />
                 </Grid>
             </Grid>
 
-            {/* Charts Row 1: Session Trends + App Usage */}
+            {/* Charts Row 1 */}
             <Grid container spacing={2} sx={{ mb: 3 }}>
                 <Grid size={{ xs: 12, md: 6 }}>
-                    <Card sx={{ height: '100%' }}>
+                    <Card {...chartCard}>
                         <CardContent>
-                            <Typography variant="h6" mb={2}>Session Trends</Typography>
+                            <Typography variant="h6" fontWeight={600} mb={2}>Session Trends</Typography>
                             <ResponsiveContainer width="100%" height={250}>
                                 <LineChart data={trendsData}>
                                     <CartesianGrid strokeDasharray="3 3" />
                                     <XAxis dataKey="day" />
                                     <YAxis />
                                     <Tooltip />
-                                    <Line type="monotone" dataKey="sessions" stroke="#2196f3" strokeWidth={2} />
+                                    <Line type="monotone" dataKey="sessions" stroke="#2196f3" strokeWidth={2} dot={{ r: 4 }} />
                                 </LineChart>
                             </ResponsiveContainer>
                         </CardContent>
                     </Card>
                 </Grid>
                 <Grid size={{ xs: 12, md: 6 }}>
-                    <Card sx={{ height: '100%' }}>
+                    <Card {...chartCard}>
                         <CardContent>
-                            <Typography variant="h6" mb={2}>Application Usage Distribution</Typography>
+                            <Typography variant="h6" fontWeight={600} mb={2}>Application Usage Distribution</Typography>
                             <ResponsiveContainer width="100%" height={250}>
                                 <PieChart>
                                     <Pie
@@ -208,12 +242,12 @@ const SessionsPage = () => {
                 </Grid>
             </Grid>
 
-            {/* Charts Row 2: Avg Duration + Policy Violations */}
+            {/* Charts Row 2 */}
             <Grid container spacing={2}>
                 <Grid size={{ xs: 12, md: 6 }}>
-                    <Card sx={{ height: '100%' }}>
+                    <Card {...chartCard}>
                         <CardContent>
-                            <Typography variant="h6" mb={2}>Average Session Duration (minutes)</Typography>
+                            <Typography variant="h6" fontWeight={600} mb={2}>Average Session Duration (minutes)</Typography>
                             <ResponsiveContainer width="100%" height={250}>
                                 <BarChart data={durationData}>
                                     <CartesianGrid strokeDasharray="3 3" />
@@ -227,9 +261,9 @@ const SessionsPage = () => {
                     </Card>
                 </Grid>
                 <Grid size={{ xs: 12, md: 6 }}>
-                    <Card sx={{ height: '100%' }}>
+                    <Card {...chartCard}>
                         <CardContent>
-                            <Typography variant="h6" mb={2}>Policy Violations</Typography>
+                            <Typography variant="h6" fontWeight={600} mb={2}>Policy Violations</Typography>
                             <ResponsiveContainer width="100%" height={250}>
                                 <BarChart data={violationsData} layout="vertical">
                                     <CartesianGrid strokeDasharray="3 3" />
