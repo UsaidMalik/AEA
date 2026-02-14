@@ -23,14 +23,17 @@ const stripedRow = {
   transition: 'background-color 0.15s',
 } as const;
 
-const PredictionsComponent: React.FC = () => {
+const PredictionsComponent: React.FC<{ sessionId?: string }> = ({ sessionId }) => {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchPredictions = async () => {
       try {
-        const response = await fetch('/api/predictions?page=1&limit=10');
+        const url = sessionId
+          ? `/api/predictions?session_id=${sessionId}&page=1&limit=10`
+          : '/api/predictions?page=1&limit=10';
+        const response = await fetch(url);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -43,7 +46,7 @@ const PredictionsComponent: React.FC = () => {
       }
     };
     fetchPredictions();
-  }, []);
+  }, [sessionId]);
 
   if (loading) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>;

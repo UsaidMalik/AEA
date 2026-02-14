@@ -20,14 +20,17 @@ const stripedRow = {
   transition: 'background-color 0.15s',
 } as const;
 
-const AppsTable: React.FC = () => {
+const AppsTable: React.FC<{ sessionId?: string }> = ({ sessionId }) => {
   const [apps, setApps] = useState<AppEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchApps = async () => {
       try {
-        const response = await fetch('/api/apps?page=1&limit=10');
+        const url = sessionId
+          ? `/api/apps?session_id=${sessionId}&page=1&limit=10`
+          : '/api/apps?page=1&limit=10';
+        const response = await fetch(url);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -40,7 +43,7 @@ const AppsTable: React.FC = () => {
       }
     };
     fetchApps();
-  }, []);
+  }, [sessionId]);
 
   if (loading) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>;

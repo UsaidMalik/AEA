@@ -30,14 +30,17 @@ const affectColor = (label: string) => {
   }
 };
 
-const WebTable: React.FC = () => {
+const WebTable: React.FC<{ sessionId?: string }> = ({ sessionId }) => {
   const [webData, setWebData] = useState<WebEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchWebData = async () => {
       try {
-        const response = await fetch('/api/web?page=1&limit=10');
+        const url = sessionId
+          ? `/api/web?session_id=${sessionId}&page=1&limit=10`
+          : '/api/web?page=1&limit=10';
+        const response = await fetch(url);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -50,7 +53,7 @@ const WebTable: React.FC = () => {
       }
     };
     fetchWebData();
-  }, []);
+  }, [sessionId]);
 
   if (loading) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>;

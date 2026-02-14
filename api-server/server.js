@@ -23,8 +23,9 @@ MongoClient.connect(uri).then (client =>{
 app.get('/api/camera-events', async (req, res) => {
    const page =parseInt(req.query.page) || 1;
    const limit = parseInt(req.query.limit) || 10;
+   const filter = req.query.session_id ? { session_id: req.query.session_id } : {};
    const data = await db.collection('camera_events')
-   .find({})
+   .find(filter)
    .sort({ ts: -1 })
     .skip((page - 1) * limit)
     .limit(limit)
@@ -38,8 +39,9 @@ app.get('/api/camera-events', async (req, res) => {
 app.get('/api/web', async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
+    const filter = req.query.session_id ? { session_id: req.query.session_id } : {};
     const data = await db.collection('website_events')
-        .find({})
+        .find(filter)
         .sort({ ts: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
@@ -51,8 +53,9 @@ app.get('/api/web', async (req, res) => {
 app.get('/api/apps', async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
+    const filter = req.query.session_id ? { session_id: req.query.session_id } : {};
     const data = await db.collection('app_events')
-        .find({})
+        .find(filter)
         .sort({ ts: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
@@ -64,8 +67,9 @@ app.get('/api/apps', async (req, res) => {
 app.get('/api/sessions', async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
+    const filter = req.query.session_id ? { session_id: req.query.session_id } : {};
     const data = await db.collection('sessions')
-        .find({})
+        .find(filter)
         .sort({ started_at: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
@@ -77,8 +81,9 @@ app.get('/api/sessions', async (req, res) => {
 app.get('/api/interventions', async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
+    const filter = req.query.session_id ? { session_id: req.query.session_id } : {};
     const data = await db.collection('interventions')
-        .find({})
+        .find(filter)
         .sort({ ts: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
@@ -99,12 +104,13 @@ app.get('/api/configs', async (req, res) => {
     res.json({ data });
 });
 
-// API endpoint to get predictions with pagination
+// Optional: API endpoint to get predictions with pagination
 app.get('/api/predictions', async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
+    const filter = req.query.session_id ? { session_id: req.query.session_id } : {};
     const data = await db.collection('predictions')
-        .find({})
+        .find(filter)
         .sort({ ts_generated: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
@@ -151,3 +157,48 @@ app.post('/api/query', async (req, res) => {
     res.status(501).json({ success: false, error: 'Ollama integration not yet implemented' });
 });
 
+
+// Session control — proxy to Flask (port 12040)
+const FLASK_URL = 'http://localhost:12040';
+
+app.post('/api/session/start', async (req, res) => {
+    try {
+        const { config_name } = req.body;
+        if (!config_name) {
+            return res.status(400).json({ error: 'Missing config_name' });
+        }
+        const flaskRes = await fetch(`${FLASK_URL}/start`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ config_name }),
+        });
+        const data = await flaskRes.json();
+        res.status(flaskRes.status).json(data);
+    } catch (error) {
+        console.error('Error starting session:', error);
+        res.status(503).json({ error: 'Processing engine not available' });
+    }
+});
+
+app.post('/api/session/stop', async (req, res) => {
+    try {
+        const flaskRes = await fetch(`${FLASK_URL}/stop`, { method: 'POST' });
+        const data = await flaskRes.json();
+        res.status(flaskRes.status).json(data);
+    } catch (error) {
+        console.error('Error stopping session:', error);
+        res.status(503).json({ error: 'Processing engine not available' });
+    }
+});
+
+app.get('/api/session/status', async (req, res) => {
+    try {
+        const flaskRes = await fetch(`${FLASK_URL}/status`);
+        const data = await flaskRes.json();
+        res.status(flaskRes.status).json(data);
+    } catch (error) {
+        console.error('Error getting session status:', error);
+        res.status(503).json({ error: 'Processing engine not available' });
+    }
+});
+ 

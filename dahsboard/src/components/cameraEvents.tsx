@@ -43,14 +43,17 @@ const affectColor = (label: string) => {
   }
 };
 
-const CameraEvents: React.FC = () => {
+const CameraEvents: React.FC<{ sessionId?: string }> = ({ sessionId }) => {
   const [cameraEvents, setCameraEvents] = useState<CameraEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchCameraEvents = async () => {
       try {
-        const response = await fetch('/api/camera-events?page=1&limit=10');
+        const url = sessionId
+          ? `/api/camera-events?session_id=${sessionId}&page=1&limit=10`
+          : '/api/camera-events?page=1&limit=10';
+        const response = await fetch(url);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -63,7 +66,7 @@ const CameraEvents: React.FC = () => {
       }
     };
     fetchCameraEvents();
-  }, []);
+  }, [sessionId]);
 
   if (loading) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>;

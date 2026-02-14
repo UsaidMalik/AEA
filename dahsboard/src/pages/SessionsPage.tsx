@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
     Container, Typography, Card, CardContent, Box, Grid,
     CircularProgress, MenuItem, TextField, Avatar, Chip,
+    Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+    Button,
 } from '@mui/material'
 import {
     Timeline, People, AccessTime, TrendingUp,
-    CalendarToday,
+    CalendarToday, OpenInNew,
 } from '@mui/icons-material'
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -66,7 +69,15 @@ const StatCard = ({ label, value, color, index }: { label: string; value: string
     )
 }
 
+const headerSx = { fontWeight: 700, bgcolor: 'action.hover' } as const
+const stripedRow = {
+    '&:nth-of-type(odd)': { bgcolor: 'action.hover' },
+    '&:hover': { bgcolor: 'action.selected', cursor: 'pointer' },
+    transition: 'background-color 0.15s',
+} as const
+
 const SessionsPage = () => {
+    const navigate = useNavigate()
     const [sessions, setSessions] = useState<Session[]>([])
     const [appEvents, setAppEvents] = useState<AppEvent[]>([])
     const [loading, setLoading] = useState(true)
@@ -243,7 +254,7 @@ const SessionsPage = () => {
             </Grid>
 
             {/* Charts Row 2 */}
-            <Grid container spacing={2}>
+            <Grid container spacing={2} sx={{ mb: 3 }}>
                 <Grid size={{ xs: 12, md: 6 }}>
                     <Card {...chartCard}>
                         <CardContent>
@@ -277,6 +288,94 @@ const SessionsPage = () => {
                     </Card>
                 </Grid>
             </Grid>
+
+            {/* Session List */}
+            <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
+                <CardContent>
+                    <Typography variant="h6" fontWeight={600} mb={2}>All Sessions</Typography>
+                    <TableContainer>
+                        <Table size="small">
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell sx={headerSx}>Config</TableCell>
+                                    <TableCell sx={headerSx}>Started</TableCell>
+                                    <TableCell sx={headerSx}>Ended</TableCell>
+                                    <TableCell sx={headerSx}>Duration</TableCell>
+                                    <TableCell sx={headerSx}>Focus</TableCell>
+                                    <TableCell sx={headerSx}>Violations</TableCell>
+                                    <TableCell sx={headerSx}>Status</TableCell>
+                                    <TableCell sx={headerSx} />
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {sessions.map(s => {
+                                    const ended = s.ended_at ? new Date(s.ended_at) : null
+                                    const started = new Date(s.started_at)
+                                    const durationMin = ended
+                                        ? Math.round((ended.getTime() - started.getTime()) / 60000)
+                                        : null
+                                    const v = s.stats?.violations
+                                    const totalV = v ? v.web + v.app + v.affect : 0
+
+                                    return (
+                                        <TableRow
+                                            key={s.session_id}
+                                            sx={stripedRow}
+                                            onClick={() => navigate(`/dashboard?session_id=${s.session_id}`)}
+                                        >
+                                            <TableCell sx={{ fontWeight: 500 }}>{s.config_name}</TableCell>
+                                            <TableCell>{started.toLocaleString()}</TableCell>
+                                            <TableCell>{ended ? ended.toLocaleString() : '-'}</TableCell>
+                                            <TableCell>{durationMin !== null ? `${durationMin}m` : '-'}</TableCell>
+                                            <TableCell>
+                                                {s.stats?.focus_pct !== undefined
+                                                    ? `${(s.stats.focus_pct * 100).toFixed(0)}%`
+                                                    : '-'}
+                                            </TableCell>
+                                            <TableCell>
+                                                {v ? (
+                                                    <Chip
+                                                        label={totalV}
+                                                        size="small"
+                                                        color={totalV > 0 ? 'error' : 'success'}
+                                                        variant="outlined"
+                                                    />
+                                                ) : '-'}
+                                            </TableCell>
+                                            <TableCell>
+                                                <Chip
+                                                    label={ended ? 'Completed' : 'Active'}
+                                                    size="small"
+                                                    color={ended ? 'default' : 'success'}
+                                                    variant="outlined"
+                                                />
+                                            </TableCell>
+                                            <TableCell>
+                                                <Button
+                                                    size="small"
+                                                    startIcon={<OpenInNew sx={{ fontSize: 14 }} />}
+                                                    sx={{ textTransform: 'none', fontSize: '0.75rem' }}
+                                                    onClick={e => {
+                                                        e.stopPropagation()
+                                                        navigate(`/dashboard?session_id=${s.session_id}`)
+                                                    }}
+                                                >
+                                                    View
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    )
+                                })}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                    {sessions.length === 0 && (
+                        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                            No sessions found
+                        </Typography>
+                    )}
+                </CardContent>
+            </Card>
         </Container>
     )
 }

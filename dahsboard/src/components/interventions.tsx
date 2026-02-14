@@ -29,14 +29,17 @@ const responseColor = (response: string) => {
   }
 };
 
-const Interventions: React.FC = () => {
+const Interventions: React.FC<{ sessionId?: string }> = ({ sessionId }) => {
   const [interventions, setInterventions] = useState<Intervention[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchInterventions = async () => {
       try {
-        const response = await fetch('/api/interventions?page=1&limit=10');
+        const url = sessionId
+          ? `/api/interventions?session_id=${sessionId}&page=1&limit=10`
+          : '/api/interventions?page=1&limit=10';
+        const response = await fetch(url);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -49,7 +52,7 @@ const Interventions: React.FC = () => {
       }
     };
     fetchInterventions();
-  }, []);
+  }, [sessionId]);
 
   if (loading) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>;

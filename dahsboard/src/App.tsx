@@ -1,6 +1,7 @@
+import { useState, useEffect } from 'react'
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { AppBar, Toolbar, Typography, Button, Box, Chip, Avatar } from '@mui/material'
-import { Home, Settings, BarChart, Person, FiberManualRecord } from '@mui/icons-material'
+import { Home, Settings, BarChart, Person, FiberManualRecord, Dashboard } from '@mui/icons-material'
 import { useUser } from './context/UserContext'
 import WelcomePage from './pages/WelcomePage'
 import HomePage from './pages/HomePage'
@@ -12,6 +13,7 @@ import SessionsPage from './pages/SessionsPage'
 
 const navItems = [
     { label: 'Home', path: '/home', icon: <Home sx={{ fontSize: 18 }} /> },
+    { label: 'Dashboard', path: '/dashboard', icon: <Dashboard sx={{ fontSize: 18 }} /> },
     { label: 'New Configuration', path: '/config/new', icon: <Settings sx={{ fontSize: 18 }} /> },
     { label: 'Previous Sessions', path: '/sessions', icon: <BarChart sx={{ fontSize: 18 }} /> },
 ]
@@ -21,6 +23,20 @@ const App = () => {
     const location = useLocation()
     const navigate = useNavigate()
     const isWelcome = location.pathname === '/'
+    const [sessionActive, setSessionActive] = useState(false)
+
+    useEffect(() => {
+        if (!userName || isWelcome) return
+        const check = () => {
+            fetch('/api/session/status')
+                .then(r => r.json())
+                .then(data => setSessionActive(data.running === true))
+                .catch(() => setSessionActive(false))
+        }
+        check()
+        const interval = setInterval(check, 5000)
+        return () => clearInterval(interval)
+    }, [userName, isWelcome])
 
     if (!userName && !isWelcome) {
         return <Navigate to="/" />
@@ -65,11 +81,17 @@ const App = () => {
                         <Box sx={{ flexGrow: 1 }} />
 
                         <Chip
-                            icon={<FiberManualRecord sx={{ fontSize: 10, color: '#4caf50 !important' }} />}
-                            label="Session Active"
+                            icon={<FiberManualRecord sx={{ fontSize: 10, color: sessionActive ? '#4caf50 !important' : '#bdbdbd !important' }} />}
+                            label={sessionActive ? 'Session Active' : 'No Session'}
                             variant="outlined"
                             size="small"
-                            sx={{ mr: 2, borderColor: '#4caf50', color: '#4caf50', fontWeight: 500 }}
+                            onClick={sessionActive ? () => navigate('/dashboard') : undefined}
+                            sx={{
+                                mr: 2, fontWeight: 500,
+                                borderColor: sessionActive ? '#4caf50' : '#bdbdbd',
+                                color: sessionActive ? '#4caf50' : '#bdbdbd',
+                                cursor: sessionActive ? 'pointer' : 'default',
+                            }}
                         />
 
                         <Chip

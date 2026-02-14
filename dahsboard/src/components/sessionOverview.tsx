@@ -37,19 +37,22 @@ const StatCard: React.FC<{ label: string; value: string | number; color?: string
   </Box>
 );
 
-const SessionOverview: React.FC = () => {
+const SessionOverview: React.FC<{ sessionId?: string }> = ({ sessionId }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchSession = async () => {
       try {
-        const response = await fetch('/api/sessions?page=1&limit=1');
+        const url = sessionId
+          ? `/api/sessions?session_id=${sessionId}&limit=1`
+          : '/api/sessions?page=1&limit=1';
+        const response = await fetch(url);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        setSession(data.data[0]);
+        setSession(data.data?.[0] || null);
       } catch (error) {
         console.error("Failed to fetch session data:", error);
       } finally {
@@ -57,7 +60,7 @@ const SessionOverview: React.FC = () => {
       }
     };
     fetchSession();
-  }, []);
+  }, [sessionId]);
 
   if (loading) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>;
@@ -67,13 +70,16 @@ const SessionOverview: React.FC = () => {
     return <Typography>No session data available.</Typography>;
   }
 
+  const stats = session.stats || { focus_pct: 0, away_secs: 0, violations: { web: 0, app: 0, affect: 0 } };
+  const violations = stats.violations || { web: 0, app: 0, affect: 0 };
+
   const formatDuration = (secs: number) => {
     const mins = Math.floor(secs / 60);
     const s = secs % 60;
     return mins > 0 ? `${mins}m ${s}s` : `${s}s`;
   };
 
-  const totalViolations = session.stats.violations.web + session.stats.violations.app + session.stats.violations.affect;
+  const totalViolations = violations.web + violations.app + violations.affect;
 
   return (
     <Card>
@@ -87,15 +93,15 @@ const SessionOverview: React.FC = () => {
           {/* Left: Stats grid */}
           <Box sx={{ flex: 2 }}>
             <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-              <StatCard label="Focus" value={`${(session.stats.focus_pct * 100).toFixed(0)}%`} color="success.main" />
-              <StatCard label="Away Time" value={formatDuration(session.stats.away_secs)} />
+              <StatCard label="Focus" value={`${(stats.focus_pct * 100).toFixed(0)}%`} color="success.main" />
+              <StatCard label="Away Time" value={formatDuration(stats.away_secs)} />
               <StatCard label="Violations" value={totalViolations} color={totalViolations > 0 ? 'error.main' : 'success.main'} />
             </Stack>
 
             <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-              <Chip label={`Web: ${session.stats.violations.web}`} color={session.stats.violations.web > 0 ? 'error' : 'success'} size="small" />
-              <Chip label={`App: ${session.stats.violations.app}`} color={session.stats.violations.app > 0 ? 'error' : 'success'} size="small" />
-              <Chip label={`Affect: ${session.stats.violations.affect}`} color={session.stats.violations.affect > 0 ? 'warning' : 'success'} size="small" />
+              <Chip label={`Web: ${violations.web}`} color={violations.web > 0 ? 'error' : 'success'} size="small" />
+              <Chip label={`App: ${violations.app}`} color={violations.app > 0 ? 'error' : 'success'} size="small" />
+              <Chip label={`Affect: ${violations.affect}`} color={violations.affect > 0 ? 'warning' : 'success'} size="small" />
             </Stack>
 
             <Typography variant="body2" color="text.secondary">
@@ -108,7 +114,7 @@ const SessionOverview: React.FC = () => {
 
           {/* Right: Focus chart */}
           <Box sx={{ flex: 1, minWidth: 200 }}>
-            <FocusChart focus_pct={session.stats.focus_pct} />
+            <FocusChart focus_pct={stats.focus_pct} />
           </Box>
         </Stack>
       </CardContent>

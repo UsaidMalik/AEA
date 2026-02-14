@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
     Container, Typography, Card, CardContent, CardActionArea,
-    Grid, Chip, Stack, Box, CircularProgress, Button, Avatar,
+    Grid, Chip, Stack, Box, CircularProgress, Button, Avatar, Snackbar, Alert,
 } from '@mui/material'
 import { PlaylistPlay, Add, ArrowBack, Apps, Language, EmojiEmotions, Timer, Security } from '@mui/icons-material'
 
@@ -26,6 +26,10 @@ const ConfigSelectPage = () => {
     const navigate = useNavigate()
     const [configs, setConfigs] = useState<Config[]>([])
     const [loading, setLoading] = useState(true)
+    const [starting, setStarting] = useState(false)
+    const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+        open: false, message: '', severity: 'success',
+    })
 
     useEffect(() => {
         fetch('/api/configs?page=1&limit=50')
@@ -35,8 +39,26 @@ const ConfigSelectPage = () => {
             .finally(() => setLoading(false))
     }, [])
 
-    const handleSelect = (config: Config) => {
-        navigate('/dashboard', { state: { configName: config.name } })
+    const handleSelect = async (config: Config) => {
+        setStarting(true)
+        try {
+            const res = await fetch('/api/session/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ config_name: config.name }),
+            })
+            const data = await res.json()
+            if (!res.ok) {
+                setSnackbar({ open: true, message: data.error || 'Failed to start session', severity: 'error' })
+                setStarting(false)
+                return
+            }
+            setSnackbar({ open: true, message: `Session started with "${config.name}"`, severity: 'success' })
+            setTimeout(() => navigate('/dashboard', { state: { configName: config.name } }), 1000)
+        } catch {
+            setSnackbar({ open: true, message: 'Processing engine not available', severity: 'error' })
+            setStarting(false)
+        }
     }
 
     if (loading) {
@@ -163,6 +185,7 @@ const ConfigSelectPage = () => {
                     startIcon={<Add />}
                     onClick={() => navigate('/config/new')}
                     sx={{ textTransform: 'none', borderRadius: 2 }}
+                    disabled={starting}
                 >
                     Create New Config
                 </Button>
@@ -171,10 +194,23 @@ const ConfigSelectPage = () => {
                     startIcon={<ArrowBack />}
                     onClick={() => navigate('/action')}
                     sx={{ textTransform: 'none', color: 'text.secondary' }}
+                    disabled={starting}
                 >
                     Back
                 </Button>
             </Stack>
+
+            {starting && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 3 }}>
+                    <CircularProgress size={20} />
+                    <Typography variant="body2" color="text.secondary">Starting session...</Typography>
+                </Box>
+            )}
+
+            <Snackbar open={snackbar.open} autoHideDuration={3000}
+                onClose={() => setSnackbar(s => ({ ...s, open: false }))}>
+                <Alert severity={snackbar.severity} variant="filled">{snackbar.message}</Alert>
+            </Snackbar>
         </Container>
     )
 }
