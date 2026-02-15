@@ -2,13 +2,13 @@
 
 const { MongoClient } = require("mongodb");
 
-const uri = "mongodb://localhost:27017";
+const uri = "mongodb://aea:aea_dev_pwd@localhost:27017";
 const client = new MongoClient(uri);
 
 async function run() {
   try {
     await client.connect();
-    const db = client.db("aea_local");
+    const db = client.db("aea");
 
     const session_id = "demo-session-001";
     const now = new Date();
@@ -45,8 +45,8 @@ async function run() {
       schema_version: 1,
     });
 
-    // 2. app_events
-    await db.collection("app_events").insertMany([
+    // 2. apps
+    await db.collection("apps").insertMany([
       {
         session_id,
         ts_open: now,
@@ -71,29 +71,31 @@ async function run() {
       },
     ]);
 
-    // 3. website_events
-    await db.collection("website_events").insertMany([
+    // 3. web
+    await db.collection("web").insertMany([
       {
         session_id,
         ts_open: new Date(now.getTime() + 5 * 60000),
         ts_close: new Date(now.getTime() + 15 * 60000),
         domain: "wikipedia.org",
-        window_title: "Wikipedia — Main Page - Chrome",
+        url_hash: "hash_wikipedia",
         policy: { allowed: true, rule: "web_allow" },
         action_taken: "ignored",
         notification: { sent: false },
-        schema_version: 2,
+        affect: { label: "neutral", confidence: 0.78 },
+        schema_version: 1,
       },
       {
         session_id,
         ts_open: new Date(now.getTime() + 20 * 60000),
         ts_close: new Date(now.getTime() + 23 * 60000),
         domain: "instagram.com",
-        window_title: "Instagram - Chrome",
+        url_hash: "hash_instagram",
         policy: { allowed: false, rule: "web_deny" },
         action_taken: "notified",
         notification: { sent: true, ts: new Date(now.getTime() + 20 * 60000) },
-        schema_version: 2,
+        affect: { label: "happy", confidence: 0.91 },
+        schema_version: 1,
       },
     ]);
 
@@ -163,23 +165,25 @@ async function run() {
           deny: ["youtube.com"],
           wildcard: true,
         },
-        emotion: {
-          allow: ["happy", "calm"],
-          deny: ["angry", "fear", "sad", "missing"],
-        },
         vision: {
           require_presence: true,
           away_grace_sec: 5,
         },
-        session_time_limit: 3600,
-        enforcement_level: "strict",
-        camera_displayed: true,
+        nudges: {
+          cooldown_sec: 30,
+          channels: ["toast", "banner"],
+        },
+        actions: {
+          on_ban: "notify",
+          on_away: "notify",
+          on_affect: "suggest",
+        },
       },
       source: "preset",
       prompt: null,
       created_ts: now,
       updated_ts: now,
-      schema_version: 2,
+      schema_version: 1,
     });
 
     // 7. predictions
@@ -200,9 +204,9 @@ async function run() {
       schema_version: 1,
     });
 
-    console.log("All data seeded successfully into AEA MongoDB!");
+    console.log("✅ All data seeded successfully into AEA MongoDB!");
   } catch (error) {
-    console.error("Seeding failed:", error);
+    console.error("❌ Seeding failed:", error);
   } finally {
     await client.close();
   }
