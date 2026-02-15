@@ -1,20 +1,33 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
     Container, Typography, Card, CardContent, Box, Grid,
     CircularProgress, MenuItem, TextField, Avatar, Chip,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-    Button,
+    Button, Tabs, Tab, Stack, Paper,
 } from '@mui/material'
 import {
     Timeline, People, AccessTime, TrendingUp,
-    CalendarToday, OpenInNew,
+    CalendarToday, OpenInNew, SmartToy, Search,
+    Stop, FiberManualRecord, BarChart,
 } from '@mui/icons-material'
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell,
-    BarChart, Bar,
+    BarChart as RechartsBarChart, Bar,
 } from 'recharts'
+
+import SessionOverview from '../components/sessionOverview'
+import AppsTable from '../components/appsTable'
+import WebTable from '../components/webTable'
+import CameraEvents from '../components/cameraEvents'
+import Interventions from '../components/interventions'
+import Configs from '../components/configs'
+import PredictionsComponent from '../components/predictions'
+
+// ============================================================================
+// Types
+// ============================================================================
 
 interface Session {
     session_id: string
@@ -34,6 +47,10 @@ interface AppEvent {
     ts_close: string
 }
 
+// ============================================================================
+// Constants & Helpers
+// ============================================================================
+
 const PIE_COLORS = ['#2196f3', '#4caf50', '#ff9800', '#9c27b0', '#607d8b']
 
 const statCardStyles = [
@@ -42,6 +59,17 @@ const statCardStyles = [
     { icon: <AccessTime />, color: '#7c4dff', bg: '#f3e5f5', badge: '-5%', badgeColor: '#ff9800' },
     { icon: <TrendingUp />, color: '#ff9800', bg: '#fff3e0', badge: '+3%', badgeColor: '#4caf50' },
 ]
+
+const headerSx = { fontWeight: 700, bgcolor: 'action.hover' } as const
+const stripedRow = {
+    '&:nth-of-type(odd)': { bgcolor: 'action.hover' },
+    '&:hover': { bgcolor: 'action.selected', cursor: 'pointer' },
+    transition: 'background-color 0.15s',
+} as const
+
+// ============================================================================
+// StatCard
+// ============================================================================
 
 const StatCard = ({ label, value, color, index }: { label: string; value: string; color?: string; index: number }) => {
     const style = statCardStyles[index]
@@ -69,36 +97,168 @@ const StatCard = ({ label, value, color, index }: { label: string; value: string
     )
 }
 
-const headerSx = { fontWeight: 700, bgcolor: 'action.hover' } as const
-const stripedRow = {
-    '&:nth-of-type(odd)': { bgcolor: 'action.hover' },
-    '&:hover': { bgcolor: 'action.selected', cursor: 'pointer' },
-    transition: 'background-color 0.15s',
-} as const
+// ============================================================================
+// AI Assistant (shared across tabs)
+// ============================================================================
 
-const SessionsPage = () => {
-    const navigate = useNavigate()
-    const [sessions, setSessions] = useState<Session[]>([])
-    const [appEvents, setAppEvents] = useState<AppEvent[]>([])
-    const [loading, setLoading] = useState(true)
-    const [timeFilter, setTimeFilter] = useState('week')
+const AIAssistant = ({ sessionId }: { sessionId: string }) => {
+    const [query, setQuery] = useState('')
+    const [ollamaResponse, setOllamaResponse] = useState('')
+    const [isLoading, setIsLoading] = useState(false)
 
-    useEffect(() => {
-        Promise.all([
-            fetch('/api/sessions?page=1&limit=50').then(r => r.json()),
-            fetch('/api/apps?page=1&limit=100').then(r => r.json()),
-        ])
-            .then(([sessData, appData]) => {
-                setSessions(sessData.data || [])
-                setAppEvents(appData.data || [])
+    const handleSearch = async () => {
+        if (!query || !sessionId) return
+        setIsLoading(true)
+        setOllamaResponse('')
+
+        try {
+            const response = await fetch('/api/query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question: query, session_id: sessionId }),
             })
-            .catch(err => console.error('Failed to fetch data:', err))
-            .finally(() => setLoading(false))
-    }, [])
 
-    if (loading) {
-        return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 8 }}><CircularProgress /></Box>
+            if (!response.ok) throw new Error('Failed to get response from Ollama')
+
+            const data = await response.json()
+            if (data.success) {
+                setOllamaResponse(data.answer)
+            } else {
+                setOllamaResponse(`Error: ${data.error}`)
+            }
+        } catch (error) {
+            console.error('Search error:', error)
+            setOllamaResponse('Error: Could not get a response from the AI.')
+        } finally {
+            setIsLoading(false)
+        }
     }
+
+    return (
+        <Paper elevation={0} sx={{ p: 3, border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <SmartToy sx={{ color: '#5c6bc0' }} />
+                <Typography variant="subtitle1" fontWeight={600}>AI Assistant</Typography>
+            </Box>
+            <Stack direction="row" spacing={2}>
+                <TextField
+                    label="Ask a question about your session..."
+                    variant="outlined"
+                    fullWidth
+                    size="small"
+                    value={query}
+                    onChange={e => setQuery(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleSearch() }}
+                />
+                <Button
+                    variant="contained"
+                    startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : <Search />}
+                    onClick={handleSearch}
+                    disabled={isLoading || !sessionId}
+                    sx={{
+                        minWidth: 110, textTransform: 'none', borderRadius: 2,
+                        background: 'linear-gradient(135deg, #5c6bc0, #7c4dff)',
+                        '&:hover': { background: 'linear-gradient(135deg, #3f51b5, #651fff)' },
+                    }}
+                >
+                    Search
+                </Button>
+            </Stack>
+
+            {ollamaResponse && (
+                <Paper variant="outlined" sx={{ mt: 2, p: 2, bgcolor: 'action.hover', borderRadius: 2 }}>
+                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
+                        {ollamaResponse}
+                    </Typography>
+                </Paper>
+            )}
+        </Paper>
+    )
+}
+
+// ============================================================================
+// Tab 0 — Recent Session (was DashboardPage)
+// ============================================================================
+
+const RecentSessionTab = ({ sessionId, isLive, onStop, stopping }: {
+    sessionId: string
+    isLive: boolean
+    onStop: () => void
+    stopping: boolean
+}) => (
+    <Stack spacing={3}>
+        {/* Live controls */}
+        {isLive && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Chip
+                    icon={<FiberManualRecord sx={{ fontSize: 10, color: '#4caf50 !important' }} />}
+                    label="Live Session"
+                    size="small"
+                    variant="outlined"
+                    sx={{ borderColor: '#4caf50', color: '#4caf50', fontWeight: 600 }}
+                />
+                <Button
+                    variant="outlined"
+                    color="error"
+                    size="small"
+                    startIcon={<Stop />}
+                    onClick={onStop}
+                    disabled={stopping}
+                    sx={{ textTransform: 'none', borderRadius: 2, fontWeight: 600 }}
+                >
+                    {stopping ? 'Stopping...' : 'Stop Session'}
+                </Button>
+            </Box>
+        )}
+
+        <Typography variant="body2" color="text.secondary">
+            {sessionId ? `Session: ${sessionId}` : 'No session found'}
+        </Typography>
+
+        {/* AI Assistant */}
+        <AIAssistant sessionId={sessionId} />
+
+        {/* Session Overview */}
+        <SessionOverview sessionId={sessionId} />
+
+        {/* Web + Apps side by side */}
+        <Grid container spacing={3}>
+            <Grid size={{ xs: 12, md: 6 }}>
+                <WebTable sessionId={sessionId} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+                <AppsTable sessionId={sessionId} />
+            </Grid>
+        </Grid>
+
+        {/* Camera Events */}
+        <CameraEvents sessionId={sessionId} />
+
+        {/* Interventions */}
+        <Interventions sessionId={sessionId} />
+
+        {/* Configs + Predictions side by side */}
+        <Grid container spacing={3}>
+            <Grid size={{ xs: 12, md: 6 }}>
+                <Configs />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+                <PredictionsComponent sessionId={sessionId} />
+            </Grid>
+        </Grid>
+    </Stack>
+)
+
+// ============================================================================
+// Tab 1 — All Sessions (was SessionsPage)
+// ============================================================================
+
+const AllSessionsTab = ({ sessions, appEvents, navigate }: {
+    sessions: Session[]
+    appEvents: AppEvent[]
+    navigate: ReturnType<typeof useNavigate>
+}) => {
+    const [timeFilter, setTimeFilter] = useState('week')
 
     // --- Derived stats ---
     const activeSessions = sessions.filter(s => !s.ended_at).length
@@ -166,33 +326,25 @@ const SessionsPage = () => {
     const chartCard = { elevation: 0 as const, sx: { height: '100%', border: '1px solid', borderColor: 'divider', borderRadius: 3 } }
 
     return (
-        <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-            {/* Header */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
-                <Box>
-                    <Typography variant="h4" fontWeight={700}>Session History & Analytics</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                        View completed sessions and analyze historical data
-                    </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                    <CalendarToday sx={{ color: 'text.secondary', fontSize: 20 }} />
-                    <TextField
-                        select
-                        value={timeFilter}
-                        onChange={e => setTimeFilter(e.target.value)}
-                        size="small"
-                        sx={{ width: 150 }}
-                    >
-                        <MenuItem value="week">This Week</MenuItem>
-                        <MenuItem value="month">This Month</MenuItem>
-                        <MenuItem value="all">All Time</MenuItem>
-                    </TextField>
-                </Box>
+        <Stack spacing={3}>
+            {/* Time filter */}
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
+                <CalendarToday sx={{ color: 'text.secondary', fontSize: 20 }} />
+                <TextField
+                    select
+                    value={timeFilter}
+                    onChange={e => setTimeFilter(e.target.value)}
+                    size="small"
+                    sx={{ width: 150 }}
+                >
+                    <MenuItem value="week">This Week</MenuItem>
+                    <MenuItem value="month">This Month</MenuItem>
+                    <MenuItem value="all">All Time</MenuItem>
+                </TextField>
             </Box>
 
             {/* Stat Cards */}
-            <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid container spacing={2}>
                 <Grid size={{ xs: 6, md: 3 }}>
                     <StatCard label="Active Sessions" value={String(activeSessions)} index={0} />
                 </Grid>
@@ -209,7 +361,7 @@ const SessionsPage = () => {
             </Grid>
 
             {/* Charts Row 1 */}
-            <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid container spacing={2}>
                 <Grid size={{ xs: 12, md: 6 }}>
                     <Card {...chartCard}>
                         <CardContent>
@@ -254,19 +406,19 @@ const SessionsPage = () => {
             </Grid>
 
             {/* Charts Row 2 */}
-            <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid container spacing={2}>
                 <Grid size={{ xs: 12, md: 6 }}>
                     <Card {...chartCard}>
                         <CardContent>
                             <Typography variant="h6" fontWeight={600} mb={2}>Average Session Duration (minutes)</Typography>
                             <ResponsiveContainer width="100%" height={250}>
-                                <BarChart data={durationData}>
+                                <RechartsBarChart data={durationData}>
                                     <CartesianGrid strokeDasharray="3 3" />
                                     <XAxis dataKey="name" />
                                     <YAxis />
                                     <Tooltip />
                                     <Bar dataKey="minutes" fill="#4caf50" radius={[4, 4, 0, 0]} />
-                                </BarChart>
+                                </RechartsBarChart>
                             </ResponsiveContainer>
                         </CardContent>
                     </Card>
@@ -276,13 +428,13 @@ const SessionsPage = () => {
                         <CardContent>
                             <Typography variant="h6" fontWeight={600} mb={2}>Policy Violations</Typography>
                             <ResponsiveContainer width="100%" height={250}>
-                                <BarChart data={violationsData} layout="vertical">
+                                <RechartsBarChart data={violationsData} layout="vertical">
                                     <CartesianGrid strokeDasharray="3 3" />
                                     <XAxis type="number" />
                                     <YAxis type="category" dataKey="name" width={120} />
                                     <Tooltip />
                                     <Bar dataKey="value" fill="#f44336" radius={[0, 4, 4, 0]} />
-                                </BarChart>
+                                </RechartsBarChart>
                             </ResponsiveContainer>
                         </CardContent>
                     </Card>
@@ -321,7 +473,7 @@ const SessionsPage = () => {
                                         <TableRow
                                             key={s.session_id}
                                             sx={stripedRow}
-                                            onClick={() => navigate(`/dashboard?session_id=${s.session_id}`)}
+                                            onClick={() => navigate(`/sessions?session_id=${s.session_id}`)}
                                         >
                                             <TableCell sx={{ fontWeight: 500 }}>{s.config_name}</TableCell>
                                             <TableCell>{started.toLocaleString()}</TableCell>
@@ -357,7 +509,7 @@ const SessionsPage = () => {
                                                     sx={{ textTransform: 'none', fontSize: '0.75rem' }}
                                                     onClick={e => {
                                                         e.stopPropagation()
-                                                        navigate(`/dashboard?session_id=${s.session_id}`)
+                                                        navigate(`/sessions?session_id=${s.session_id}`)
                                                     }}
                                                 >
                                                     View
@@ -376,6 +528,165 @@ const SessionsPage = () => {
                     )}
                 </CardContent>
             </Card>
+        </Stack>
+    )
+}
+
+// ============================================================================
+// Main — SessionsPage (combined)
+// ============================================================================
+
+const SessionsPage = () => {
+    const navigate = useNavigate()
+    const [searchParams, setSearchParams] = useSearchParams()
+    const urlSessionId = searchParams.get('session_id')
+    const urlTab = searchParams.get('tab')
+
+    // Tab: 0 = Recent Session, 1 = All Sessions
+    const [tab, setTab] = useState(urlSessionId ? 0 : urlTab === 'all' ? 1 : 0)
+
+    // Recent session state
+    const [sessionId, setSessionId] = useState(urlSessionId || '')
+    const [isLive, setIsLive] = useState(false)
+    const [stopping, setStopping] = useState(false)
+    const [resolving, setResolving] = useState(!urlSessionId)
+
+    // All sessions state
+    const [sessions, setSessions] = useState<Session[]>([])
+    const [appEvents, setAppEvents] = useState<AppEvent[]>([])
+    const [loading, setLoading] = useState(true)
+
+    // Resolve session_id for Recent tab: URL param > running session > latest session
+    useEffect(() => {
+        if (urlSessionId) {
+            setSessionId(urlSessionId)
+            setResolving(false)
+            return
+        }
+
+        const resolve = async () => {
+            try {
+                const statusRes = await fetch('/api/session/status')
+                const statusData = await statusRes.json()
+                if (statusData.running && statusData.session_id) {
+                    setSessionId(statusData.session_id)
+                    setIsLive(true)
+                    setResolving(false)
+                    return
+                }
+            } catch { /* flask not running */ }
+
+            try {
+                const sessRes = await fetch('/api/sessions?page=1&limit=1')
+                const sessData = await sessRes.json()
+                if (sessData.data && sessData.data.length > 0) {
+                    setSessionId(sessData.data[0].session_id)
+                }
+            } catch (error) {
+                console.error('Failed to resolve session:', error)
+            }
+            setResolving(false)
+        }
+        resolve()
+    }, [urlSessionId])
+
+    // Poll live status
+    useEffect(() => {
+        if (!sessionId) return
+        const check = () => {
+            fetch('/api/session/status')
+                .then(r => r.json())
+                .then(data => setIsLive(data.running === true && data.session_id === sessionId))
+                .catch(() => setIsLive(false))
+        }
+        check()
+        const interval = setInterval(check, 5000)
+        return () => clearInterval(interval)
+    }, [sessionId])
+
+    // Fetch all sessions + app events for All Sessions tab
+    useEffect(() => {
+        Promise.all([
+            fetch('/api/sessions?page=1&limit=50').then(r => r.json()),
+            fetch('/api/apps?page=1&limit=100').then(r => r.json()),
+        ])
+            .then(([sessData, appData]) => {
+                setSessions(sessData.data || [])
+                setAppEvents(appData.data || [])
+            })
+            .catch(err => console.error('Failed to fetch data:', err))
+            .finally(() => setLoading(false))
+    }, [])
+
+    const handleStop = async () => {
+        setStopping(true)
+        try {
+            await fetch('/api/session/stop', { method: 'POST' })
+            setIsLive(false)
+        } catch {
+            console.error('Failed to stop session')
+        } finally {
+            setStopping(false)
+        }
+    }
+
+    const handleTabChange = (_: React.SyntheticEvent, newTab: number) => {
+        setTab(newTab)
+        if (newTab === 1) {
+            setSearchParams({ tab: 'all' })
+        } else {
+            setSearchParams(sessionId ? { session_id: sessionId } : {})
+        }
+    }
+
+    if (resolving || loading) {
+        return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 8 }}><CircularProgress /></Box>
+    }
+
+    return (
+        <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+            {/* Header */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                <Avatar sx={{ bgcolor: '#e8eaf6', color: '#5c6bc0' }}>
+                    <BarChart />
+                </Avatar>
+                <Typography variant="h4" fontWeight={700}>Sessions</Typography>
+            </Box>
+            <Typography variant="body2" color="text.secondary" mb={2}>
+                View your current session details or browse all session history & analytics
+            </Typography>
+
+            {/* Tabs */}
+            <Tabs
+                value={tab}
+                onChange={handleTabChange}
+                sx={{
+                    mb: 3,
+                    '& .MuiTab-root': { textTransform: 'none', fontWeight: 600 },
+                    '& .Mui-selected': { color: '#5c6bc0' },
+                    '& .MuiTabs-indicator': { backgroundColor: '#5c6bc0' },
+                }}
+            >
+                <Tab label="Recent Session" />
+                <Tab label="All Sessions" />
+            </Tabs>
+
+            {/* Tab Content */}
+            {tab === 0 && (
+                <RecentSessionTab
+                    sessionId={sessionId}
+                    isLive={isLive}
+                    onStop={handleStop}
+                    stopping={stopping}
+                />
+            )}
+            {tab === 1 && (
+                <AllSessionsTab
+                    sessions={sessions}
+                    appEvents={appEvents}
+                    navigate={navigate}
+                />
+            )}
         </Container>
     )
 }

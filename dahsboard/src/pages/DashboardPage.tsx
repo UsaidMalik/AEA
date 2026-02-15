@@ -94,11 +94,9 @@ const DashboardPage = () => {
 
             const data = await response.json()
             if (data.success) {
-                setOllamaResponse(
-                    `MongoDB Query:\n-----------------\nCollection: ${data.query.collection}\nFilter: ${JSON.stringify(data.query.filter, null, 2)}\nProjection: ${JSON.stringify(data.query.projection, null, 2)}\n\nResults (${data.results.length}):\n-----------------\n${JSON.stringify(data.results, null, 2)}`
-                )
+                setOllamaResponse(data.answer)
             } else {
-                setOllamaResponse(`Error:\n${data.error}\n\n${data.raw || ''}`)
+                setOllamaResponse(`Error: ${data.error}`)
             }
         } catch (error) {
             console.error('Search error:', error)

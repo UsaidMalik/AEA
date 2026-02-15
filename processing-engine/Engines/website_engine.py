@@ -113,19 +113,32 @@ class WebsiteEngine:
             self.logger.error(f"Error getting active window info on Linux: {e}")
             return None, None
 
+    def _extract_site_keyword(self, site):
+        """Extract the keyword from a site entry for matching.
+        'youtube.com' → 'youtube', 'youtube' → 'youtube', 'reddit.com' → 'reddit'
+        """
+        s = site.lower().strip()
+        # Strip common TLDs if present
+        for tld in (".com", ".org", ".net", ".io", ".co", ".edu", ".gov"):
+            if s.endswith(tld):
+                s = s[:-len(tld)]
+                break
+        return s
+
     def _detect_domain(self, window_title):
         """Try to detect a known domain from the window title.
+        Handles both 'youtube.com' and bare 'youtube' in config.
         Returns the matched domain string or None.
         """
         title_lower = window_title.lower()
         # Check banned sites first
         for site in self.banned_websites:
-            site_name = site.lower().rsplit(".", 1)[0]
+            site_name = self._extract_site_keyword(site)
             if site_name in title_lower:
                 return site
         # Check allowed sites
         for site in self.allowed_websites:
-            site_name = site.lower().rsplit(".", 1)[0]
+            site_name = self._extract_site_keyword(site)
             if site_name in title_lower:
                 return site
         return None

@@ -112,16 +112,25 @@ class AppEngine:
             self.logger.error(f"Error getting active window info on Linux: {e}")
             return None, None
 
+    def _normalize_app_name(self, name):
+        """Strip common suffixes (.exe, .app) for flexible matching."""
+        n = name.lower().strip()
+        for suffix in (".exe", ".app"):
+            if n.endswith(suffix):
+                n = n[:-len(suffix)]
+        return n
+
     def _determine_policy(self, process_name):
         """Determine policy for a given process name.
+        Matches flexibly: 'discord' matches 'Discord.exe' and vice versa.
         Returns dict matching expected schema: { allowed: bool, rule: str }
         """
-        pname = process_name.lower()
+        pname = self._normalize_app_name(process_name)
         for banned in self.banned_apps:
-            if banned.lower() == pname:
+            if self._normalize_app_name(banned) == pname:
                 return {"allowed": False, "rule": "app_deny"}
         for allowed in self.allowed_apps:
-            if allowed.lower() == pname:
+            if self._normalize_app_name(allowed) == pname:
                 return {"allowed": True, "rule": "app_allow"}
         # App not in either list — allowed by default
         return {"allowed": True, "rule": "app_unlisted"}

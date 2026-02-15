@@ -1,0 +1,92 @@
+Focus and Attention Science — Research Summary
+
+THE NEUROSCIENCE OF ATTENTION
+
+The prefrontal cortex is responsible for sustained attention and executive control. It has limited glucose and oxygen reserves, which is why sustained focus is genuinely effortful and depletes over time.
+
+Two attention systems:
+1. Voluntary (top-down): Deliberate focus on a chosen task. Uses executive control. Fatigues over time.
+2. Involuntary (bottom-up): Attention grabbed by stimuli (notifications, movement, sounds). Does not fatigue but constantly competes with voluntary attention.
+
+Every notification, app switch, or website visit that breaks flow triggers the bottom-up system and forces the top-down system to re-engage — costing cognitive resources each time.
+
+FLOW STATE
+
+Mihaly Csikszentmihalyi's research on flow states shows that peak performance occurs when:
+- Challenge level matches skill level (not too easy, not too hard)
+- Clear goals are present
+- Immediate feedback is available
+- Distractions are eliminated
+
+It takes approximately 15-25 minutes to enter a flow state. Any interruption resets this timer. A single distraction can cost 30+ minutes of productive flow.
+
+Flow state indicators: loss of self-consciousness, altered sense of time, intrinsic motivation, effortless concentration. The emotional state during flow is typically calm-focused, not stressed or anxious.
+
+ULTRADIAN RHYTHMS
+
+Research by Peretz Lavie and others shows the body operates on 90-120 minute ultradian cycles throughout the day. During each cycle, there is a period of higher alertness followed by a natural dip.
+
+Optimal work pattern: 90 minutes of focused work followed by a 15-20 minute break. This aligns with the body's natural rhythm and prevents cognitive exhaustion.
+
+Working through fatigue dips (forcing focus when the body signals rest) leads to more errors, poorer decision-making, and longer recovery time.
+
+THE POMODORO TECHNIQUE
+
+Developed by Francesco Cirillo:
+- Work for 25 minutes with complete focus
+- Take a 5-minute break
+- After 4 pomodoros, take a 15-30 minute break
+
+Research supports this approach for people who struggle with sustained attention. The shorter intervals make focus more manageable and the regular breaks prevent burnout.
+
+Best suited for: people building focus stamina, tasks with many subtasks, environments with frequent interruptions.
+
+DIGITAL DISTRACTION RESEARCH
+
+Gloria Mark (UC Irvine) findings:
+- Average time on a single screen before switching: 47 seconds (down from 2.5 minutes in 2004)
+- 23 minutes 15 seconds average to refocus after interruption
+- Self-interruptions are as costly as external ones
+- People compensate for interruptions by working faster, but this increases stress and error rates
+
+RescueTime data across millions of users:
+- Average knowledge worker spends only 2 hours 48 minutes per day on productive tasks
+- Top 10% of productive workers average 4.5 hours of productive time
+- Most common productivity killers: email, social media, messaging apps, news sites
+
+EMOTION AND PRODUCTIVITY
+
+Research shows emotional state significantly impacts cognitive performance:
+- Mild positive mood enhances creative problem-solving and flexibility
+- Anxiety and fear narrow attention (useful for detail work, harmful for creative work)
+- Sadness slows processing speed and reduces motivation
+- Anger impairs decision-making and increases risk-taking
+- Neutral-to-slightly-positive is the optimal state for sustained knowledge work
+
+Emotional regulation strategies that improve focus:
+1. Brief mindfulness (2-3 minutes) before starting focused work
+2. Labeling emotions reduces their disruptive effect
+3. Physical movement (even 5 minutes of walking) resets emotional state
+4. Environment design: reduce triggers for negative emotions in the workspace
+
+SLEEP AND COGNITIVE PERFORMANCE
+
+Matthew Walker's research (Why We Sleep):
+- 6 hours of sleep for 10 nights produces the same cognitive impairment as 24 hours without sleep
+- Sleep deprivation impairs attention, working memory, and decision-making before you feel tired
+- Optimal cognitive performance requires 7-9 hours of sleep
+- Consistent sleep schedule matters more than total hours
+
+HABIT FORMATION AND BEHAVIOR CHANGE
+
+James Clear (Atomic Habits) framework:
+- Make it obvious: design your environment to cue productive behavior
+- Make it attractive: pair focused work with something enjoyable
+- Make it easy: reduce friction for desired behaviors (close distracting apps before starting)
+- Make it satisfying: track progress and celebrate small wins
+
+Habit stacking: attach new productive habits to existing routines.
+
+The 2-minute rule: if starting feels hard, commit to just 2 minutes. Starting is the hardest part — momentum usually carries you forward.
+
+BJ Fogg's research: motivation is unreliable. Design systems that work even when motivation is low. Environment design > willpower.

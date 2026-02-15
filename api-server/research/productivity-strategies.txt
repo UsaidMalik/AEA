@@ -1,0 +1,98 @@
+Productivity Strategies — Evidence-Based Techniques
+
+TIME BLOCKING
+
+Cal Newport and other researchers recommend scheduling every block of your day. Unstructured time tends to fill with shallow tasks and distractions.
+
+Implementation:
+- Divide your day into 30-minute or 60-minute blocks
+- Assign specific tasks to each block
+- Include buffer blocks for overflow and unexpected tasks
+- Review and adjust at midday if needed
+
+Research shows time blocking increases productive output by 30-50% compared to reactive task management (working from a to-do list without scheduled blocks).
+
+THE EISENHOWER MATRIX
+
+Categorize tasks by urgency and importance:
+- Urgent + Important: Do immediately
+- Important + Not Urgent: Schedule for deep work blocks
+- Urgent + Not Important: Delegate or batch
+- Not Urgent + Not Important: Eliminate
+
+Most people spend too much time in the "Urgent but Not Important" quadrant. True productivity improvement comes from maximizing time in "Important but Not Urgent" — this is where deep, meaningful work lives.
+
+TASK BATCHING
+
+Group similar tasks together and process them in one session:
+- All email checking in 2-3 designated windows per day
+- All meetings grouped in one part of the day
+- All administrative tasks in one batch
+- All creative/deep work in uninterrupted blocks
+
+Batching reduces context-switching costs. Each time you switch between different types of tasks, you pay a cognitive switching penalty of 15-25 minutes of reduced efficiency.
+
+THE TWO-MINUTE RULE (David Allen — Getting Things Done)
+
+If a task takes less than two minutes, do it immediately rather than scheduling it. This prevents small tasks from accumulating and creating mental clutter.
+
+For tasks longer than two minutes: capture them in a trusted system (not your brain) and schedule them for the appropriate time block.
+
+ENERGY MANAGEMENT (Not Just Time Management)
+
+Tony Schwartz's research shows that managing energy is more important than managing time:
+- Physical energy: regular exercise, proper nutrition, adequate sleep
+- Emotional energy: cultivate positive emotions, manage stress
+- Mental energy: reduce decision fatigue, eliminate unnecessary choices
+- Spiritual energy: connect work to purpose and meaning
+
+Most people have peak cognitive energy in the morning (2-4 hours after waking). Schedule your most demanding work during this period.
+
+Energy audit: track your energy levels throughout the day for one week. Identify your natural peaks and valleys. Align task difficulty with energy availability.
+
+ACCOUNTABILITY AND TRACKING
+
+Research consistently shows that tracking behavior changes behavior:
+- People who track their food intake eat 30% less
+- People who track their exercise are 40% more likely to maintain a routine
+- People who track productive hours increase productive time by 25%
+
+The Hawthorne effect: merely measuring something tends to improve it. By monitoring your focus sessions, app usage, and violations, you are already creating positive behavioral pressure.
+
+Weekly reviews amplify this effect: spend 15-30 minutes each week reviewing your productivity data. Identify patterns, celebrate improvements, and adjust strategies for the coming week.
+
+ENVIRONMENT DESIGN
+
+Your physical and digital environment has more influence on behavior than willpower:
+- Remove distracting apps from your phone's home screen
+- Use website blockers during focus periods
+- Designate a specific location for deep work
+- Keep your workspace clean and organized
+- Use noise-canceling headphones or background sounds
+
+Nudge theory (Thaler & Sunstein): small changes in environment design can have outsized effects on behavior. Making the desired behavior the path of least resistance is more effective than relying on motivation.
+
+BREAKS AND RECOVERY
+
+Strategic breaks improve overall productivity:
+- Micro-breaks (30-60 seconds): look away from screen, stretch
+- Short breaks (5-10 minutes): walk, get water, brief movement
+- Long breaks (15-30 minutes): walk outside, exercise, socialize
+
+Nature exposure during breaks is particularly restorative. Even looking at nature images for 40 seconds improves attention on the next task (University of Melbourne research).
+
+Avoid "fake breaks" that drain cognitive resources: scrolling social media, checking news, or browsing online stores are not restorative — they add cognitive load.
+
+GOAL SETTING FOR FOCUS IMPROVEMENT
+
+Progressive focus building:
+- Week 1-2: Target 1 hour of uninterrupted deep work per day
+- Week 3-4: Increase to 1.5-2 hours
+- Month 2: Target 2-3 hours
+- Month 3+: Work toward 3-4 hours of deep work daily
+
+Track violations as a learning tool, not a punishment. Each violation is data about your triggers and patterns. Common violation patterns reveal:
+- Time-of-day vulnerability (usually after lunch or late afternoon)
+- Emotional triggers (stress, boredom, frustration lead to distraction-seeking)
+- Task-related triggers (difficult or unclear tasks increase distraction)
+- Social triggers (messages, notifications from others)

@@ -1,8 +1,11 @@
 
 
 const express = require('express');
-const { MongoClient } = require('mongodb');
+const { MongoClient, ObjectId } = require('mongodb');
 require('dotenv').config();
+
+const { handleSmartQuery } = require('./tools/smart-query');
+const { indexResearchFiles, getStatus: getRagStatus } = require('./tools/rag');
 
 const uri = process.env.DATABASE_URI || 'mongodb://localhost:27017';
 const dbName = process.env.DATABASE_NAME || 'aea_local';
@@ -12,9 +15,13 @@ const app = express();
 app.use(express.json());
 
 // Connect to MongoDB
-MongoClient.connect(uri).then (client =>{
+MongoClient.connect(uri).then(async (client) => {
     db = client.db(dbName);
     console.log('Connected to MongoDB');
+
+    // Index research files for RAG (non-blocking, logs errors)
+    indexResearchFiles().catch(err => console.error('[RAG] Indexing failed:', err.message));
+
     app.listen(12039, () => console.log('API server running on http://localhost:12039'));
 });
 
@@ -147,14 +154,51 @@ app.post('/api/configs', async (req, res) => {
     }
 });
 
-// POST endpoint for AI query (Ollama)
+// DELETE endpoint to remove a config
+app.delete('/api/configs/:id', async (req, res) => {
+    try {
+        const result = await db.collection('configs').deleteOne({ _id: new ObjectId(req.params.id) });
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ success: false, error: 'Config not found' });
+        }
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting config:', error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+});
+
+// POST endpoint for AI query (Ollama + RAG)
 app.post('/api/query', async (req, res) => {
     const { question, session_id } = req.body;
     if (!question || !session_id) {
         return res.status(400).json({ success: false, error: 'Missing question or session_id' });
     }
-    // TODO: integrate with Ollama to generate MongoDB query from natural language
-    res.status(501).json({ success: false, error: 'Ollama integration not yet implemented' });
+    try {
+        const result = await handleSmartQuery(db, question, session_id);
+        res.json(result);
+    } catch (error) {
+        console.error('Smart query error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to process query. Is Ollama running?',
+        });
+    }
+});
+
+// GET endpoint to check RAG status
+app.get('/api/rag/status', (req, res) => {
+    res.json(getRagStatus());
+});
+
+// POST endpoint to re-index research files
+app.post('/api/rag/reindex', async (req, res) => {
+    try {
+        await indexResearchFiles();
+        res.json({ success: true, ...getRagStatus() });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
 });
 
 

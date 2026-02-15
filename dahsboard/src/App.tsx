@@ -1,21 +1,21 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { AppBar, Toolbar, Typography, Button, Box, Chip, Avatar } from '@mui/material'
-import { Home, Settings, BarChart, Person, FiberManualRecord, Dashboard } from '@mui/icons-material'
+import { Home, Settings, BarChart, Person, FiberManualRecord, Folder } from '@mui/icons-material'
 import { useUser } from './context/UserContext'
 import WelcomePage from './pages/WelcomePage'
 import HomePage from './pages/HomePage'
 import ActionPage from './pages/ActionPage'
 import ConfigPage from './pages/ConfigPage'
 import ConfigSelectPage from './pages/ConfigSelectPage'
-import DashboardPage from './pages/DashboardPage'
+import ConfigsPage from './pages/ConfigsPage'
 import SessionsPage from './pages/SessionsPage'
 
 const navItems = [
     { label: 'Home', path: '/home', icon: <Home sx={{ fontSize: 18 }} /> },
-    { label: 'Dashboard', path: '/dashboard', icon: <Dashboard sx={{ fontSize: 18 }} /> },
+    { label: 'Sessions', path: '/sessions', icon: <BarChart sx={{ fontSize: 18 }} /> },
+    { label: 'Configurations', path: '/configs', icon: <Folder sx={{ fontSize: 18 }} /> },
     { label: 'New Configuration', path: '/config/new', icon: <Settings sx={{ fontSize: 18 }} /> },
-    { label: 'Previous Sessions', path: '/sessions', icon: <BarChart sx={{ fontSize: 18 }} /> },
 ]
 
 const App = () => {
@@ -59,7 +59,7 @@ const App = () => {
 
                         <Box sx={{ ml: 4, display: 'flex', gap: 0.5 }}>
                             {navItems.map(item => {
-                                const active = location.pathname === item.path
+                                const active = location.pathname.startsWith(item.path)
                                 return (
                                     <Button
                                         key={item.path}
@@ -85,7 +85,7 @@ const App = () => {
                             label={sessionActive ? 'Session Active' : 'No Session'}
                             variant="outlined"
                             size="small"
-                            onClick={sessionActive ? () => navigate('/dashboard') : undefined}
+                            onClick={sessionActive ? () => navigate('/sessions') : undefined}
                             sx={{
                                 mr: 2, fontWeight: 500,
                                 borderColor: sessionActive ? '#4caf50' : '#bdbdbd',
@@ -109,8 +109,9 @@ const App = () => {
                 <Route path="/home" element={<HomePage />} />
                 <Route path="/action" element={<ActionPage />} />
                 <Route path="/config/new" element={<ConfigPage />} />
-                <Route path="/configs" element={<ConfigSelectPage />} />
-                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/configs" element={<ConfigsPage />} />
+                <Route path="/configs/select" element={<ConfigSelectPage />} />
+                <Route path="/dashboard" element={<Navigate to="/sessions" />} />
                 <Route path="/sessions" element={<SessionsPage />} />
                 <Route path="*" element={<Navigate to="/" />} />
             </Routes>

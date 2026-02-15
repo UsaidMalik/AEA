@@ -1,0 +1,31 @@
+Deep Work — Key Findings from Cal Newport's Research
+
+Deep work is the ability to focus without distraction on a cognitively demanding task. It is a skill that allows you to quickly master complicated information and produce better results in less time.
+
+The Deep Work Hypothesis: The ability to perform deep work is becoming increasingly rare at exactly the same time it is becoming increasingly valuable in our economy. As a consequence, the few who cultivate this skill will thrive.
+
+Key principles:
+
+1. Work Deeply: Schedule deep work blocks of 60-90 minutes. The human brain can sustain intense focus for approximately 90 minutes before needing a break. Elite performers in many fields work in approximately 90-minute sessions.
+
+2. Embrace Boredom: If you constantly switch to distracting stimuli at the first hint of boredom, your brain becomes conditioned to require novelty. This weakens your ability to sustain focus. Practice being bored — resist checking social media or switching apps during work periods.
+
+3. Quit Social Media: Not all social media is harmful, but most people use it without intention. The "any benefit" approach — using a tool if it offers any possible benefit — is flawed. Instead, apply the craftsman approach: adopt a tool only if its positive impacts substantially outweigh its negative impacts.
+
+4. Drain the Shallows: Shallow work (email, meetings, admin tasks) expands to fill available time. Schedule every minute of your day and limit shallow work to less than 30% of your total work time.
+
+Attention residue: When you switch from Task A to Task B, your attention doesn't immediately follow — a residue of your attention remains stuck thinking about Task A. This residue significantly impairs performance on the next task. Minimize task switching to reduce attention residue.
+
+The 4DX Framework for Deep Work:
+- Focus on the wildly important (limit goals)
+- Act on lead measures (track hours of deep work, not just output)
+- Keep a compelling scoreboard (visible tracking motivates)
+- Create a cadence of accountability (weekly reviews)
+
+Research shows that after approximately 4 hours of deep, concentrated work per day, most people's ability to focus drops significantly. Novice deep workers may only sustain 1 hour initially. The key is to build the muscle gradually.
+
+Productive meditation: Use periods of physical activity (walking, commuting) to focus on a single professional problem. This trains your ability to sustain attention on a single problem and resist distraction.
+
+Distraction data: A University of California Irvine study found that it takes an average of 23 minutes and 15 seconds to fully return to a task after an interruption. Each context switch has a significant cognitive cost.
+
+The shutdown ritual: At the end of your workday, perform a shutdown ritual where you review every incomplete task and either complete it, capture it, or schedule it. This allows your brain to truly disconnect, enabling better rest and next-day performance.

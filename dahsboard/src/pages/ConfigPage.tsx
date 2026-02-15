@@ -7,6 +7,98 @@ import {
 } from '@mui/material'
 import { Computer, Add, Close, Save, ArrowBack } from '@mui/icons-material'
 
+const handleAdd = (
+    input: string,
+    setInput: (v: string) => void,
+    mode: 'allow' | 'deny',
+    setAllow: React.Dispatch<React.SetStateAction<string[]>>,
+    setDeny: React.Dispatch<React.SetStateAction<string[]>>,
+) => {
+    const val = input.trim().toLowerCase()
+    if (!val) return
+    if (mode === 'allow') {
+        setAllow(prev => prev.includes(val) ? prev : [...prev, val])
+    } else {
+        setDeny(prev => prev.includes(val) ? prev : [...prev, val])
+    }
+    setInput('')
+}
+
+const PolicySection = ({
+    label, placeholder, input, setInput, mode, setMode, allowed, denied, setAllowed, setDenied,
+}: {
+    label: string; placeholder: string
+    input: string; setInput: (v: string) => void
+    mode: 'allow' | 'deny'; setMode: (v: 'allow' | 'deny') => void
+    allowed: string[]; denied: string[]
+    setAllowed: React.Dispatch<React.SetStateAction<string[]>>
+    setDenied: React.Dispatch<React.SetStateAction<string[]>>
+}) => (
+    <Card elevation={0} sx={{ mb: 3, border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
+        <CardContent sx={{ p: 3 }}>
+            <Typography variant="h6" fontWeight={600} mb={2}>{label}</Typography>
+            <Stack direction="row" spacing={1} alignItems="center" mb={2}>
+                <TextField
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleAdd(input, setInput, mode, setAllowed, setDenied)}
+                    placeholder={placeholder}
+                    size="small"
+                    sx={{ flex: 1 }}
+                />
+                <Select value={mode} onChange={e => setMode(e.target.value as 'allow' | 'deny')} size="small">
+                    <MenuItem value="allow">Allow</MenuItem>
+                    <MenuItem value="deny">Deny</MenuItem>
+                </Select>
+                <Button
+                    variant="contained"
+                    startIcon={<Add />}
+                    onClick={() => handleAdd(input, setInput, mode, setAllowed, setDenied)}
+                    sx={{
+                        textTransform: 'none', borderRadius: 2,
+                        background: 'linear-gradient(135deg, #5c6bc0, #7c4dff)',
+                        '&:hover': { background: 'linear-gradient(135deg, #3f51b5, #651fff)' },
+                    }}
+                >
+                    Add
+                </Button>
+            </Stack>
+
+            {/* List items */}
+            <Stack spacing={0.5}>
+                {allowed.map(a => (
+                    <Box key={`allow-${a}`} sx={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        py: 1, px: 2, borderRadius: 2, bgcolor: 'action.hover',
+                    }}>
+                        <Typography variant="body2" fontWeight={500}>{a}</Typography>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                            <Chip label="Allowed" size="small" color="success" variant="outlined" />
+                            <IconButton size="small" onClick={() => setAllowed(prev => prev.filter(x => x !== a))}>
+                                <Close sx={{ fontSize: 16 }} />
+                            </IconButton>
+                        </Stack>
+                    </Box>
+                ))}
+                {denied.map(a => (
+                    <Box key={`deny-${a}`} sx={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        py: 1, px: 2, borderRadius: 2, bgcolor: 'action.hover',
+                    }}>
+                        <Typography variant="body2" fontWeight={500}>{a}</Typography>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                            <Chip label="Blocked" size="small" color="error" variant="outlined" />
+                            <IconButton size="small" onClick={() => setDenied(prev => prev.filter(x => x !== a))}>
+                                <Close sx={{ fontSize: 16 }} />
+                            </IconButton>
+                        </Stack>
+                    </Box>
+                ))}
+            </Stack>
+        </CardContent>
+    </Card>
+)
+
 const ConfigPage = () => {
     const navigate = useNavigate()
 
@@ -40,23 +132,6 @@ const ConfigPage = () => {
         open: false, message: '', severity: 'success',
     })
 
-    const handleAdd = (
-        input: string,
-        setInput: (v: string) => void,
-        mode: 'allow' | 'deny',
-        setAllow: React.Dispatch<React.SetStateAction<string[]>>,
-        setDeny: React.Dispatch<React.SetStateAction<string[]>>,
-    ) => {
-        const val = input.trim().toLowerCase()
-        if (!val) return
-        if (mode === 'allow') {
-            setAllow(prev => prev.includes(val) ? prev : [...prev, val])
-        } else {
-            setDeny(prev => prev.includes(val) ? prev : [...prev, val])
-        }
-        setInput('')
-    }
-
     const handleSubmit = async () => {
         const body = {
             name: configName,
@@ -89,81 +164,6 @@ const ConfigPage = () => {
             setSnackbar({ open: true, message: 'Network error', severity: 'error' })
         }
     }
-
-    const PolicySection = ({
-        label, placeholder, input, setInput, mode, setMode, allowed, denied, setAllowed, setDenied,
-    }: {
-        label: string; placeholder: string
-        input: string; setInput: (v: string) => void
-        mode: 'allow' | 'deny'; setMode: (v: 'allow' | 'deny') => void
-        allowed: string[]; denied: string[]
-        setAllowed: React.Dispatch<React.SetStateAction<string[]>>
-        setDenied: React.Dispatch<React.SetStateAction<string[]>>
-    }) => (
-        <Card elevation={0} sx={{ mb: 3, border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
-            <CardContent sx={{ p: 3 }}>
-                <Typography variant="h6" fontWeight={600} mb={2}>{label}</Typography>
-                <Stack direction="row" spacing={1} alignItems="center" mb={2}>
-                    <TextField
-                        value={input}
-                        onChange={e => setInput(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && handleAdd(input, setInput, mode, setAllowed, setDenied)}
-                        placeholder={placeholder}
-                        size="small"
-                        sx={{ flex: 1 }}
-                    />
-                    <Select value={mode} onChange={e => setMode(e.target.value as 'allow' | 'deny')} size="small">
-                        <MenuItem value="allow">Allow</MenuItem>
-                        <MenuItem value="deny">Deny</MenuItem>
-                    </Select>
-                    <Button
-                        variant="contained"
-                        startIcon={<Add />}
-                        onClick={() => handleAdd(input, setInput, mode, setAllowed, setDenied)}
-                        sx={{
-                            textTransform: 'none', borderRadius: 2,
-                            background: 'linear-gradient(135deg, #5c6bc0, #7c4dff)',
-                            '&:hover': { background: 'linear-gradient(135deg, #3f51b5, #651fff)' },
-                        }}
-                    >
-                        Add
-                    </Button>
-                </Stack>
-
-                {/* List items */}
-                <Stack spacing={0.5}>
-                    {allowed.map(a => (
-                        <Box key={`allow-${a}`} sx={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            py: 1, px: 2, borderRadius: 2, bgcolor: 'action.hover',
-                        }}>
-                            <Typography variant="body2" fontWeight={500}>{a}</Typography>
-                            <Stack direction="row" spacing={1} alignItems="center">
-                                <Chip label="Allowed" size="small" color="success" variant="outlined" />
-                                <IconButton size="small" onClick={() => setAllowed(prev => prev.filter(x => x !== a))}>
-                                    <Close sx={{ fontSize: 16 }} />
-                                </IconButton>
-                            </Stack>
-                        </Box>
-                    ))}
-                    {denied.map(a => (
-                        <Box key={`deny-${a}`} sx={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            py: 1, px: 2, borderRadius: 2, bgcolor: 'action.hover',
-                        }}>
-                            <Typography variant="body2" fontWeight={500}>{a}</Typography>
-                            <Stack direction="row" spacing={1} alignItems="center">
-                                <Chip label="Blocked" size="small" color="error" variant="outlined" />
-                                <IconButton size="small" onClick={() => setDenied(prev => prev.filter(x => x !== a))}>
-                                    <Close sx={{ fontSize: 16 }} />
-                                </IconButton>
-                            </Stack>
-                        </Box>
-                    ))}
-                </Stack>
-            </CardContent>
-        </Card>
-    )
 
     return (
         <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
@@ -217,14 +217,14 @@ const ConfigPage = () => {
 
             {/* Policy Sections */}
             <PolicySection
-                label="Application Policies" placeholder="Add application name"
+                label="Application Policies" placeholder="e.g. discord, chrome, spotify"
                 input={appInput} setInput={setAppInput}
                 mode={appMode} setMode={setAppMode}
                 allowed={allowedApps} denied={deniedApps}
                 setAllowed={setAllowedApps} setDenied={setDeniedApps}
             />
             <PolicySection
-                label="Web Policies" placeholder="Add website URL"
+                label="Web Policies" placeholder="e.g. youtube, reddit, facebook"
                 input={webInput} setInput={setWebInput}
                 mode={webMode} setMode={setWebMode}
                 allowed={allowedWebs} denied={deniedWebs}

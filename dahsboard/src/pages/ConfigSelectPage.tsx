@@ -54,7 +54,7 @@ const ConfigSelectPage = () => {
                 return
             }
             setSnackbar({ open: true, message: `Session started with "${config.name}"`, severity: 'success' })
-            setTimeout(() => navigate('/dashboard', { state: { configName: config.name } }), 1000)
+            setTimeout(() => navigate('/sessions', { state: { configName: config.name } }), 1000)
         } catch {
             setSnackbar({ open: true, message: 'Processing engine not available', severity: 'error' })
             setStarting(false)
