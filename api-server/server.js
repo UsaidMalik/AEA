@@ -171,8 +171,8 @@ app.delete('/api/configs/:id', async (req, res) => {
 // POST endpoint for AI query (Ollama + RAG)
 app.post('/api/query', async (req, res) => {
     const { question, session_id } = req.body;
-    if (!question || !session_id) {
-        return res.status(400).json({ success: false, error: 'Missing question or session_id' });
+    if (!question) {
+        return res.status(400).json({ success: false, error: 'Missing question' });
     }
     try {
         const result = await handleSmartQuery(db, question, session_id);

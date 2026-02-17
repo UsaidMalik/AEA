@@ -3,6 +3,7 @@ import time
 import logging
 import datetime
 from DBWriter.DBWriter import DBWriter
+from Alerter.alerter import Alerter
 import platform
 import subprocess
 
@@ -28,6 +29,7 @@ class AppEngine:
         # Runtime state
         self.is_running = False
         self.db_writer = DBWriter()
+        self.alerter = Alerter()
         self.service_name = "app_events"
         self.detection_thread = None
 
@@ -194,6 +196,7 @@ class AppEngine:
                             f"App violation detected: {process_name} "
                             f"in window '{window_title}'"
                         )
+                        self.alerter.alert("Blocked App Detected", f"{process_name} is not allowed")
                 else:
                     # Same app still in foreground — update window title in case it changed
                     self.current_window_title = window_title

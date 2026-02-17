@@ -10,30 +10,66 @@ const { searchKnowledge } = require('./rag');
 
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:latest';
+const OLLAMA_TIMEOUT_MS = parseInt(process.env.OLLAMA_TIMEOUT_MS) || 60000; // 60s default
 
 
 // ============================================================================
-// Ollama API Call
+// Ollama API Call (with timeout)
 // ============================================================================
 
-async function callOllama(messages) {
-    const res = await fetch(`${OLLAMA_URL}/api/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            model: OLLAMA_MODEL,
-            messages,
-            stream: false,
-        }),
-    });
+async function callOllama(messages, timeoutMs = OLLAMA_TIMEOUT_MS) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-    if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Ollama error (${res.status}): ${text}`);
+    try {
+        const res = await fetch(`${OLLAMA_URL}/api/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: OLLAMA_MODEL,
+                messages,
+                stream: false,
+            }),
+            signal: controller.signal,
+        });
+
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`Ollama error (${res.status}): ${text}`);
+        }
+
+        const data = await res.json();
+        return data.message?.content || '';
+    } catch (err) {
+        if (err.name === 'AbortError') {
+            throw new Error(`Ollama timed out after ${timeoutMs / 1000}s — model may be overloaded`);
+        }
+        throw err;
+    } finally {
+        clearTimeout(timer);
     }
+}
 
-    const data = await res.json();
-    return data.message?.content || '';
+
+// ============================================================================
+// Question Classification (no LLM call — fast keyword check)
+// ============================================================================
+
+function classifyQuestion(question) {
+    const q = question.toLowerCase();
+
+    // Data keywords — questions that need DB tools
+    const dataKeywords = [
+        'how many', 'how much', 'violation', 'session', 'app', 'website',
+        'focus', 'stats', 'duration', 'time spent', 'emotion', 'denied',
+        'blocked', 'used', 'top', 'most', 'least', 'average', 'compare',
+        'trend', 'week', 'today', 'yesterday', 'last', 'history',
+        'summary', 'overview', 'report', 'breakdown', 'score',
+        'away', 'absent', 'missing', 'present', 'camera',
+    ];
+
+    const needsData = dataKeywords.some(kw => q.includes(kw));
+    return needsData ? 'data' : 'general';
 }
 
 
@@ -49,38 +85,28 @@ function buildToolList() {
 
 
 // ============================================================================
-// Step 1 — Tool Selection
+// Tool Selection (only for data questions)
 // ============================================================================
 
 async function selectTools(question) {
-    const prompt = `You are a data analysis assistant for a productivity monitoring app called AEA.
-The user is asking about their focus/productivity session. You must decide which data query functions to call.
+    const prompt = `Pick 1-4 functions to answer a productivity app question. Reply with ONLY a JSON array.
 
-Available functions:
+Functions:
 ${buildToolList()}
 
-RULES:
-- Respond with ONLY valid JSON, nothing else.
-- Pick 1-4 tools that are most relevant to answer the question.
-- For predefined tools, use: { "name": "toolName" }
-- For customQuery, include a querySpec: { "name": "customQuery", "querySpec": { "collection": "...", "filter": {...}, "sort": {...}, "limit": 50 } }
-- For customQuery aggregation: { "name": "customQuery", "querySpec": { "collection": "...", "pipeline": [ {$match: ...}, {$group: ...} ] } }
-- Use customQuery ONLY when the predefined tools cannot answer the question (e.g. cross-session trends, weekly grouping, date-range filtering, averages across sessions).
-- Allowed collections for customQuery: sessions, app_events, website_events, camera_events, interventions, configs, predictions
+For customQuery: { "name": "customQuery", "querySpec": { "collection": "...", "pipeline": [...] } }
+Collections: sessions, app_events, website_events, camera_events, interventions, configs
 
 Examples:
-- "How many violations?" → [{ "name": "getViolationCounts" }]
-- "What apps did I use most?" → [{ "name": "getTopApps" }]
-- "Give me a full summary" → [{ "name": "getSessionOverview" }, { "name": "getSessionStats" }, { "name": "getTopApps" }]
-- "Compare my violations across all sessions this week" → [{ "name": "customQuery", "querySpec": { "collection": "sessions", "pipeline": [{ "$sort": { "started_at": -1 } }, { "$limit": 7 }, { "$project": { "session_id": 1, "started_at": 1, "stats.violations": 1 } }] } }]
-- "Average focus across my last 5 sessions" → [{ "name": "customQuery", "querySpec": { "collection": "sessions", "pipeline": [{ "$sort": { "started_at": -1 } }, { "$limit": 5 }, { "$group": { "_id": null, "avg_focus": { "$avg": "$stats.focus_pct" } } }] } }]
-
-User question: "${question}"`;
+"How many violations?" → [{"name":"getViolationCounts"}]
+"What apps did I use?" → [{"name":"getTopApps"}]
+"Full summary" → [{"name":"getSessionOverview"},{"name":"getSessionStats"},{"name":"getTopApps"}]
+"Average focus last 5 sessions" → [{"name":"customQuery","querySpec":{"collection":"sessions","pipeline":[{"$sort":{"started_at":-1}},{"$limit":5},{"$group":{"_id":null,"avg":{"$avg":"$stats.focus_pct"}}}]}}]`;
 
     const response = await callOllama([
         { role: 'system', content: prompt },
         { role: 'user', content: question },
-    ]);
+    ], 30000);
 
     // Extract JSON array from response (with sanitisation for common LLM quirks)
     const jsonMatch = response.match(/\[[\s\S]*\]/);
@@ -118,10 +144,10 @@ User question: "${question}"`;
 
 
 // ============================================================================
-// Step 2 — Execute Selected Tools
+// Execute Selected Tools
 // ============================================================================
 
-async function executeTools(db, session_id, toolSelections) {
+async function executeTools(db, session_id = null, toolSelections) {
     const results = {};
 
     await Promise.all(
@@ -130,7 +156,6 @@ async function executeTools(db, session_id, toolSelections) {
             if (!tool) return;
             try {
                 if (tool.requiresSpec) {
-                    // customQuery — pass the querySpec as third arg
                     results[selection.name] = await tool.execute(db, session_id, selection.querySpec);
                 } else {
                     results[selection.name] = await tool.execute(db, session_id);
@@ -146,11 +171,10 @@ async function executeTools(db, session_id, toolSelections) {
 
 
 // ============================================================================
-// Step 3 — Generate Answer (with RAG context)
+// Generate Answer — data-backed (with session data + RAG)
 // ============================================================================
 
-async function generateAnswer(question, toolResults, ragContext) {
-    // Build research context block
+async function generateDataAnswer(question, toolResults, ragContext) {
     let researchBlock = '';
     if (ragContext && ragContext.length > 0) {
         researchBlock = `\n\nRelevant research & knowledge:\n${ragContext
@@ -158,56 +182,140 @@ async function generateAnswer(question, toolResults, ragContext) {
             .join('\n')}`;
     }
 
-    const prompt = `You are AEA's Smart Analysis Assistant — a productivity coach backed by real session data and research.
+    const prompt = `You are AEA's Smart Analysis Assistant — a friendly, knowledgeable productivity coach.
 
-Your job:
-1. Answer the user's question using the session data provided below.
-2. When relevant, reference research findings to give educated advice.
-3. Be concise, specific, and use actual numbers from the data.
-4. If giving improvement tips, make them actionable and tied to the user's actual patterns.
-5. Format your response in a clean, readable way.
+Your style:
+- Be conversational and encouraging, not robotic.
+- Use the actual numbers from the data but explain what they mean.
+- Give specific, actionable advice when relevant.
+- If something looks good, acknowledge it. If there are issues, be constructive.
+- Keep responses concise (3-6 sentences) unless the user asked for a full report.
+- Use simple formatting: bullet points for lists, bold for key numbers.
 
 Session data:
 ${JSON.stringify(toolResults, null, 2)}
 ${researchBlock}`;
 
-    const answer = await callOllama([
+    return await callOllama([
         { role: 'system', content: prompt },
         { role: 'user', content: question },
     ]);
-
-    return answer;
 }
 
 
 // ============================================================================
-// Main Handler — Full Pipeline
+// Generate Answer — general (advice/tips, no session data needed)
+// ============================================================================
+
+async function generateGeneralAnswer(question, ragContext) {
+    let researchBlock = '';
+    if (ragContext && ragContext.length > 0) {
+        researchBlock = `\n\nRelevant research you can reference:\n${ragContext
+            .map((r, i) => `[${i + 1}] (${r.source}) ${r.text}`)
+            .join('\n')}`;
+    }
+
+    const prompt = `You are AEA's Smart Analysis Assistant — a friendly, knowledgeable productivity coach.
+
+You help users improve their focus, productivity, and work habits. AEA is an app that monitors sessions (tracking apps, websites, emotions via camera, and sending alerts for violations).
+
+Your style:
+- Be conversational, warm, and encouraging.
+- Give specific, actionable advice — not generic platitudes.
+- Reference research when available.
+- Keep responses concise (3-6 sentences) unless the user wants more detail.
+- You can discuss productivity techniques, focus strategies, time management, emotional regulation, and work habits.
+${researchBlock}`;
+
+    return await callOllama([
+        { role: 'system', content: prompt },
+        { role: 'user', content: question },
+    ]);
+}
+
+
+// ============================================================================
+// Main Handler — Smart Pipeline
 // ============================================================================
 
 async function handleSmartQuery(db, question, session_id) {
-    // Step 1: LLM picks which tools to call
-    const toolSelections = await selectTools(question);
+    const t0 = Date.now();
 
-    if (toolSelections.length === 0) {
+    // Classify: does this question need session data or is it general?
+    const questionType = classifyQuestion(question);
+    console.log(`[SmartQuery] Question type: ${questionType}`);
+
+    // Always fetch RAG in background
+    const ragPromise = searchKnowledge(question).catch(err => {
+        console.error('[SmartQuery] RAG search failed (non-fatal):', err.message);
+        return [];
+    });
+
+    // ── GENERAL questions: skip tool selection entirely (1 LLM call instead of 2) ──
+    if (questionType === 'general') {
+        const ragContext = await ragPromise;
+        console.log(`[SmartQuery] RAG took ${Date.now() - t0}ms`);
+
+        const t1 = Date.now();
+        const answer = await generateGeneralAnswer(question, ragContext);
+        console.log(`[SmartQuery] Answer generation took ${Date.now() - t1}ms`);
+        console.log(`[SmartQuery] Total (general path): ${Date.now() - t0}ms`);
+
         return {
-            success: false,
-            error: 'Could not determine which data to fetch for your question.',
+            success: true,
+            answer,
+            tools_used: [],
+            research_used: ragContext.length > 0,
         };
     }
 
-    // Step 2: Execute the selected query tools
-    const toolResults = await executeTools(db, session_id, toolSelections);
-
-    // Step 3: Search RAG knowledge base for relevant research
-    let ragContext = [];
+    // ── DATA questions: full pipeline with tool selection ──
+    let toolSelections;
     try {
-        ragContext = await searchKnowledge(question);
+        toolSelections = await selectTools(question);
+        console.log(`[SmartQuery] Tool selection took ${Date.now() - t0}ms → ${toolSelections.map(t => t.name).join(', ')}`);
     } catch (err) {
-        console.error('[SmartQuery] RAG search failed (non-fatal):', err.message);
+        // If tool selection fails, fall back to general answer
+        console.error(`[SmartQuery] Tool selection failed, falling back to general: ${err.message}`);
+        const ragContext = await ragPromise;
+        const answer = await generateGeneralAnswer(question, ragContext);
+        console.log(`[SmartQuery] Total (fallback path): ${Date.now() - t0}ms`);
+
+        return {
+            success: true,
+            answer,
+            tools_used: [],
+            research_used: ragContext.length > 0,
+        };
     }
 
-    // Step 4: Generate the final answer
-    const answer = await generateAnswer(question, toolResults, ragContext);
+    if (toolSelections.length === 0) {
+        // No tools matched — fall back to general answer instead of failing
+        const ragContext = await ragPromise;
+        const answer = await generateGeneralAnswer(question, ragContext);
+        console.log(`[SmartQuery] Total (no-tools fallback): ${Date.now() - t0}ms`);
+
+        return {
+            success: true,
+            answer,
+            tools_used: [],
+            research_used: ragContext.length > 0,
+        };
+    }
+
+    // Execute tools + RAG in parallel
+    const t1 = Date.now();
+    const [toolResults, ragContext] = await Promise.all([
+        executeTools(db, session_id, toolSelections),
+        ragPromise,
+    ]);
+    console.log(`[SmartQuery] Tools + RAG took ${Date.now() - t1}ms (parallel)`);
+
+    // Generate the final answer
+    const t2 = Date.now();
+    const answer = await generateDataAnswer(question, toolResults, ragContext);
+    console.log(`[SmartQuery] Answer generation took ${Date.now() - t2}ms`);
+    console.log(`[SmartQuery] Total pipeline: ${Date.now() - t0}ms`);
 
     return {
         success: true,

@@ -185,7 +185,7 @@ const ConfigPage = () => {
                         <Grid size={{ xs: 12, md: 5 }}>
                             <TextField
                                 label="Session Name"
-                                placeholder="e.g., Development Session"
+                                placeholder="e.g., Development Session, Study Time, Reading Hour"
                                 value={configName}
                                 onChange={e => setConfigName(e.target.value)}
                                 fullWidth
@@ -195,7 +195,7 @@ const ConfigPage = () => {
                         <Grid size={{ xs: 12, md: 4 }}>
                             <Autocomplete
                                 freeSolo
-                                options={['study', 'write_essay']}
+                                options={['Study', 'Write_Essay', 'Work', 'Code']}
                                 value={action}
                                 onInputChange={(_e, val) => setAction(val)}
                                 renderInput={params => <TextField {...params} label="Session Type" size="small" />}

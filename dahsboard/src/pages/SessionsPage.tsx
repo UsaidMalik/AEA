@@ -101,21 +101,24 @@ const StatCard = ({ label, value, color, index }: { label: string; value: string
 // AI Assistant (shared across tabs)
 // ============================================================================
 
-const AIAssistant = ({ sessionId }: { sessionId: string }) => {
+const AIAssistant = ({ sessionId }: { sessionId?: string }) => {
     const [query, setQuery] = useState('')
     const [ollamaResponse, setOllamaResponse] = useState('')
     const [isLoading, setIsLoading] = useState(false)
 
     const handleSearch = async () => {
-        if (!query || !sessionId) return
+        if (!query) return
         setIsLoading(true)
         setOllamaResponse('')
 
         try {
+            const body: Record<string, string> = { question: query }
+            if (sessionId) body.session_id = sessionId
+
             const response = await fetch('/api/query', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ question: query, session_id: sessionId }),
+                body: JSON.stringify(body),
             })
 
             if (!response.ok) throw new Error('Failed to get response from Ollama')
@@ -154,7 +157,7 @@ const AIAssistant = ({ sessionId }: { sessionId: string }) => {
                     variant="contained"
                     startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : <Search />}
                     onClick={handleSearch}
-                    disabled={isLoading || !sessionId}
+                    disabled={isLoading}
                     sx={{
                         minWidth: 110, textTransform: 'none', borderRadius: 2,
                         background: 'linear-gradient(135deg, #5c6bc0, #7c4dff)',
@@ -327,6 +330,9 @@ const AllSessionsTab = ({ sessions, appEvents, navigate }: {
 
     return (
         <Stack spacing={3}>
+            {/* AI Assistant — no sessionId, for cross-session queries */}
+            <AIAssistant />
+
             {/* Time filter */}
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
                 <CalendarToday sx={{ color: 'text.secondary', fontSize: 20 }} />

@@ -6,13 +6,14 @@ from utils.buffer_parser import parse_buffer
 from collections import deque
 import math
 from DBWriter.DBWriter import DBWriter
-import datetime 
+from Alerter.alerter import Alerter
+import datetime
 
 class FacialEngine:
     def __init__(self, action_config, session_id=None, camera_index=0, safety_buffer_seconds=1, minimum_emotion_percentage=0.6, show_face_window=True):
         """
         Initialize the Facial Engine
-        
+
         Args:
             camera_index (int): Camera index for video capture (default: 0)
         """
@@ -23,6 +24,12 @@ class FacialEngine:
         self.safety_buffer_seconds = safety_buffer_seconds
         self.action_config = action_config # REQUIRED MUST BE SET BY THE CALLER
         self.minimum_emotion_percentage = minimum_emotion_percentage # how much a buffer must include of a single event to definetly call that this event is happening
+
+        # Away grace period - how long user can be absent before violation
+        vision_policy = action_config.get("vision", {})
+        self.away_grace_sec = vision_policy.get("away_grace_sec", 5)
+        self.absent_since = None  # timestamp when face first went missing
+        self.away_violation_fired = False  # avoid spamming alerts for same absence
         
         # internally set (hardcoded by the class)
         self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
@@ -38,6 +45,7 @@ class FacialEngine:
         self.service_name = "camera_events" # MAGIC STRING AS MONGODB COLLECTION NAME
         # lowkey no idea what the below does will have to google it
         self.db_writer = DBWriter()
+        self.alerter = Alerter()
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
 
@@ -109,6 +117,32 @@ class FacialEngine:
             
             # Process the frame
             processed_frame = self._process_frame(frame)
+
+            # check if user has been away too long
+            if self.safety_buffer and self.safety_buffer[-1] == "missing":
+                if self.absent_since is None:
+                    self.absent_since = datetime.datetime.utcnow()
+                elif not self.away_violation_fired:
+                    elapsed = (datetime.datetime.utcnow() - self.absent_since).total_seconds()
+                    if elapsed >= self.away_grace_sec:
+                        self.logger.warning(f"User absent for {elapsed:.0f}s (grace: {self.away_grace_sec}s)")
+                        self.alerter.alert("User Away", f"Absent for {elapsed:.0f} seconds")
+                        self.db_writer.write_entry(
+                            collection=self.service_name,
+                            data={
+                                "session_id": str(self.session_id),
+                                "ts": datetime.datetime.utcnow(),
+                                "presence": {"state": "missing", "confidence": 1.0},
+                                "posture": {"indicator": "", "confidence": ""},
+                                "affect": {"label": "missing", "confidence": ""},
+                                "schema_version": 1
+                            }
+                        )
+                        self.away_violation_fired = True
+            else:
+                # face is back — reset absence tracking
+                self.absent_since = None
+                self.away_violation_fired = False
 
             # do a check for the banned emotions
             self.last_greatest_emotion = parse_buffer(self.safety_buffer, self.minimum_emotion_percentage, self.safety_buffer_max_size)
@@ -184,6 +218,7 @@ class FacialEngine:
     def onViolation(self):
         # this function is called when a violation happens
         print("VIOLATION HAPPENED")
+        self.alerter.alert("Emotion Violation", f"Detected: {self.last_greatest_emotion}")
         # the contract for this is this: 
         """
         {

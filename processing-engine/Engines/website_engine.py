@@ -3,6 +3,7 @@ import time
 import logging
 import datetime
 from DBWriter.DBWriter import DBWriter
+from Alerter.alerter import Alerter
 import platform
 import subprocess
 
@@ -27,6 +28,7 @@ class WebsiteEngine:
         #Runtime state
         self.is_running = False
         self.db_writer = DBWriter()
+        self.alerter = Alerter()
         self.service_name = "website_events"
         self.detection_thread = None
 
@@ -219,6 +221,7 @@ class WebsiteEngine:
                                 f"Website violation detected: {detected_domain} "
                                 f"in window '{window_title}'"
                             )
+                            self.alerter.alert("Blocked Website Detected", f"{detected_domain} is not allowed")
                 else:
                     # Same site still in foreground — update window title in case it changed
                     if self.current_domain:

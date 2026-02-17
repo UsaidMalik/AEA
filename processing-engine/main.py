@@ -1,14 +1,17 @@
 from Engines.facial_engine import FacialEngine
 from Engines.website_engine import WebsiteEngine
 from Engines.app_engine import AppEngine
+from Alerter.alerter import Alerter
 from DBWriter.DBWriter import DBWriter
 import uuid
 import datetime
+import threading
 
 
 class SessionManager:
     def __init__(self):
         self.db_writer = DBWriter()
+        self.alerter = Alerter()
         self.session_id = None
         self.config = None
         self.started_at = None
@@ -16,6 +19,7 @@ class SessionManager:
         self.facial_engine = None
         self.website_engine = None
         self.app_engine = None
+        self._timer = None
 
     def start_session(self, config_name):
         """Look up config by name, create a session, start all engines."""
@@ -56,13 +60,34 @@ class SessionManager:
         self.app_engine.start_detection()
         self.running = True
 
+        # Auto-stop timer based on session_time_limit
+        time_limit = action_config.get("session_time_limit", 0)
+        if time_limit and time_limit > 0:
+            self._timer = threading.Timer(time_limit, self._on_time_limit)
+            self._timer.daemon = True
+            self._timer.start()
+            print(f"Session will auto-stop in {time_limit} seconds.")
+
         print("All engines running.\n")
         return {"session_id": str(self.session_id), "config_name": self.config["name"]}
+
+    def _on_time_limit(self):
+        """Called automatically when session_time_limit expires."""
+        if not self.running:
+            return
+        print("\nSession time limit reached — auto-stopping...")
+        self.alerter.alert("Session Ended", "Your session time limit has been reached")
+        self.stop_session()
 
     def stop_session(self):
         """Stop all engines and finalize session stats."""
         if not self.running:
             return {"error": "No session is currently running."}
+
+        # Cancel the auto-stop timer if it's still pending
+        if self._timer:
+            self._timer.cancel()
+            self._timer = None
 
         self.facial_engine.stop_detection()
         self.website_engine.stop_detection()
