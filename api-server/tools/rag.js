@@ -8,8 +8,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
-const EMBED_MODEL = process.env.OLLAMA_EMBED_MODEL || 'nomic-embed-text';
+const OLLAMA_URL = process.env.OLLAMA_URL;
+const EMBED_MODEL = process.env.OLLAMA_EMBED_MODEL;
 const RESEARCH_DIR = path.join(__dirname, '..', 'research');
 const CHUNK_SIZE = 500;
 const CHUNK_OVERLAP = 100;
@@ -168,4 +168,5 @@ function getStatus() {
 }
 
 
-module.exports = { indexResearchFiles, searchKnowledge, reindex, getStatus };
+module.exports = { indexResearchFiles, searchKnowledge, reindex, getStatus, chunkText, cosineSimilarity};
+

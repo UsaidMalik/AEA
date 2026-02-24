@@ -1,3 +1,10 @@
+# ~Usaid-Raheem
+# FacialEngine: Captures webcam feed, detects emotions using DeepFace,
+# maintains a safety buffer to confirm emotional states, detects policy violations,
+# logs events to MongoDB, and sends alerts for banned emotions. Windows/Linux compatible.
+# Note: Requires OpenCV, DeepFace, and win10toast for alerts.
+
+
 import cv2
 from deepface import DeepFace
 import logging

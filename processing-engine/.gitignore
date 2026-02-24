@@ -1,5 +1,0 @@
-# ignore venv run it locally
-/venv
-__pycache__
-.pytest_cache
-.env

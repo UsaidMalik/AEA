@@ -1,3 +1,9 @@
+# ~Raheem
+# WebsiteEngine: Monitors active window titles for website keywords,
+# detects policy violations based on config, logs events to MongoDB,
+# and sends alerts for blocked websites. Windows/Linux compatible.
+# Note: Requires win10toast for alerts and pywin32/psutil on Windows.
+
 import threading
 import time
 import logging

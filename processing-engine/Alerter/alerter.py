@@ -22,3 +22,4 @@ class Alerter:
             duration=10,
             threaded=True
         )
+    

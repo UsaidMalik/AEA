@@ -8,8 +8,8 @@
 const { queryTools } = require('./query-tools');
 const { searchKnowledge } = require('./rag');
 
-const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:latest';
+const OLLAMA_URL = process.env.OLLAMA_URL;
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL;
 const OLLAMA_TIMEOUT_MS = parseInt(process.env.OLLAMA_TIMEOUT_MS) || 60000; // 60s default
 
 
@@ -326,4 +326,5 @@ async function handleSmartQuery(db, question, session_id) {
 }
 
 
-module.exports = { handleSmartQuery };
+module.exports = { handleSmartQuery, classifyQuestion };
+

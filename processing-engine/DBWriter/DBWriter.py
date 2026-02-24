@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 class DBWriter:
     def __init__(self):
         # Pull env vars
-        load_dotenv()  # Load environment variables from .env file
+        load_dotenv(dotenv_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '.env'))
         db_uri = os.getenv("DATABASE_URI", "mongodb")
         db_name = os.getenv("DATABASE_NAME", "aea_local")
 

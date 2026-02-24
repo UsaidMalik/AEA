@@ -1,3 +1,10 @@
+# ~Raheem
+# AppEngine: Monitors active applications and window titles,
+# detects policy violations based on config, logs events to MongoDB,
+# and sends alerts for blocked apps. Windows/Linux compatible.
+# Note: Requires win10toast for alerts and pywin32/psutil on Windows.
+
+
 import threading
 import time
 import logging
@@ -176,12 +183,12 @@ class AppEngine:
 
             if process_name:
                 # Check if the foreground app has changed
-                if process_name.lower() != (self.current_app or "").lower():
+                if self._normalize_app_name(process_name) != (self.current_app or "").lower():
                     # App transition: flush the old app, start tracking the new one
                     self._flush_current_app()
 
                     policy = self._determine_policy(process_name)
-                    self.current_app = process_name
+                    self.current_app = self._normalize_app_name(process_name)
                     self.current_window_title = window_title
                     self.current_app_ts_open = datetime.datetime.utcnow()
                     self.current_app_policy = policy

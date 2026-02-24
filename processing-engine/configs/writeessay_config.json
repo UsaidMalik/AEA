@@ -1,3 +1,6 @@
+//Dummy Write Essay Session Configuration for testing and demonstration purposes
+
+
 {
   "action": "write_essay",
   "apps": {

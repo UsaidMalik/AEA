@@ -310,4 +310,4 @@ const queryTools = [
     { name: 'customQuery',         description: 'Run a custom MongoDB find or aggregation pipeline when predefined tools are not enough. Requires a querySpec object with: collection, filter/sort/limit (for find) OR pipeline (for aggregate). Use for cross-session analysis, weekly trends, grouping by day, averages, or any query the other tools cannot handle.', execute: customQuery, requiresSpec: true },
 ];
 
-module.exports = { queryTools };
+module.exports = { queryTools, validateQuerySpec};

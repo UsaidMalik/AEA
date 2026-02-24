@@ -1,3 +1,7 @@
+// ~Raheem
+// This page is not being used right now,
+// But it is kept as a reference and backup
+
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
