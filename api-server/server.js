@@ -10,7 +10,7 @@ const uri = process.env.DATABASE_URI;
 const dbName = process.env.DATABASE_NAME;
 
 // Session control — proxy to Flask (port 12040)
-const FLASK_URL = 'http://localhost:12040';
+const FLASK_URL = process.env.FLASK_URL || 'http://localhost:12040';
 
 
 function createApp(db) {

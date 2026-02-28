@@ -1,30 +1,117 @@
 services:
+
+  # ── Database ──────────────────────────────────────────────────────────────
   mongo:
     image: mongo:7
     container_name: aea-mongo
     restart: unless-stopped
     ports:
       - "27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: aea
-      MONGO_INITDB_ROOT_PASSWORD: aea_dev_pwd
     volumes:
       - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   mongo-express:
     image: mongo-express:1.0.2
     container_name: aea-mongo-express
     restart: unless-stopped
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
     ports:
       - "8081:8081"
     environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: aea
-      ME_CONFIG_MONGODB_ADMINPASSWORD: aea_dev_pwd
       ME_CONFIG_MONGODB_SERVER: mongo
-      ME_CONFIG_BASICAUTH_USERNAME: aea
-      ME_CONFIG_BASICAUTH_PASSWORD: aea_dev_pwd
+      ME_CONFIG_BASICAUTH_ENABLED: "false"
+
+  # ── AI / LLM ──────────────────────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama
+    container_name: aea-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # Pulls the required models on first startup, then exits.
+  # Re-running "docker compose up" skips this if models are already cached.
+  ollama-init:
+    image: ollama/ollama
+    container_name: aea-ollama-init
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        ollama pull qwen2.5:latest &&
+        ollama pull nomic-embed-text
+    restart: "no"
+
+  # ── Processing Engine ─────────────────────────────────────────────────────
+  processing-engine:
+    build: ./processing-engine
+    container_name: aea-engine
+    restart: unless-stopped
+    ports:
+      - "12040:12040"
+    environment:
+      - DATABASE_URI=mongodb://mongo:27017
+      - DATABASE_NAME=aea_local
+    depends_on:
+      mongo:
+        condition: service_healthy
+    # Camera passthrough — Linux hosts only.
+    # Uncomment if you need facial recognition in Docker:
+    # devices:
+    #   - /dev/video0:/dev/video0
+
+  # ── API Server ────────────────────────────────────────────────────────────
+  api-server:
+    build: ./api-server
+    container_name: aea-api
+    restart: unless-stopped
+    ports:
+      - "12039:12039"
+    environment:
+      - DATABASE_URI=mongodb://mongo:27017
+      - DATABASE_NAME=aea_local
+      - OLLAMA_URL=http://ollama:11434
+      - OLLAMA_MODEL=qwen2.5:latest
+      - OLLAMA_EMBED_MODEL=nomic-embed-text
+      - OLLAMA_TIMEOUT_MS=120000
+      - FLASK_URL=http://processing-engine:12040
+    depends_on:
+      mongo:
+        condition: service_healthy
+      processing-engine:
+        condition: service_started
+      ollama:
+        condition: service_healthy
+
+  # ── Dashboard ─────────────────────────────────────────────────────────────
+  dashboard:
+    build: ./dahsboard
+    container_name: aea-dashboard
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - api-server
 
 volumes:
   mongo_data:
+  ollama_data:
