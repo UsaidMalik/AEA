@@ -44,6 +44,7 @@ pillow==11.3.0
 protobuf==6.32.1
 Pygments==2.19.2
 pymongo==4.15.0
+psutil==7.0.0
 PySocks==1.7.1
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.1
