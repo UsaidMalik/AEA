@@ -106,7 +106,7 @@ Examples:
     const response = await callOllama([
         { role: 'system', content: prompt },
         { role: 'user', content: question },
-    ], 30000);
+    ], OLLAMA_TIMEOUT_MS);
 
     // Extract JSON array from response (with sanitisation for common LLM quirks)
     const jsonMatch = response.match(/\[[\s\S]*\]/);
