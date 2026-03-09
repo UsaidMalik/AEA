@@ -106,7 +106,7 @@ const ConfigsPage = () => {
         <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Avatar sx={{ bgcolor: '#e8eaf6', color: '#5c6bc0' }}>
+                    <Avatar sx={{ bgcolor: '#eff6ff', color: '#2563eb' }}>
                         <Settings />
                     </Avatar>
                     <Typography variant="h4" fontWeight={700}>My Configurations</Typography>
@@ -117,8 +117,8 @@ const ConfigsPage = () => {
                     onClick={() => navigate('/config/new')}
                     sx={{
                         textTransform: 'none', borderRadius: 2, fontWeight: 600,
-                        background: 'linear-gradient(135deg, #5c6bc0, #7c4dff)',
-                        '&:hover': { background: 'linear-gradient(135deg, #3f51b5, #651fff)' },
+                        background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
+                        '&:hover': { background: 'linear-gradient(135deg, #1d4ed8, #6d28d9)' },
                     }}
                 >
                     New Config
@@ -133,7 +133,7 @@ const ConfigsPage = () => {
                     p: 6, textAlign: 'center',
                     border: '1px solid', borderColor: 'divider', borderRadius: 3,
                 }}>
-                    <Avatar sx={{ width: 64, height: 64, mx: 'auto', mb: 2, bgcolor: '#f3e5f5', color: '#7c4dff' }}>
+                    <Avatar sx={{ width: 64, height: 64, mx: 'auto', mb: 2, bgcolor: '#f3e5f5', color: '#7c3aed' }}>
                         <Add sx={{ fontSize: 32 }} />
                     </Avatar>
                     <Typography variant="h6" color="text.secondary" mb={1}>
@@ -148,8 +148,8 @@ const ConfigsPage = () => {
                         onClick={() => navigate('/config/new')}
                         sx={{
                             textTransform: 'none', borderRadius: 2, fontWeight: 600,
-                            background: 'linear-gradient(135deg, #5c6bc0, #7c4dff)',
-                            '&:hover': { background: 'linear-gradient(135deg, #3f51b5, #651fff)' },
+                            background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
+                            '&:hover': { background: 'linear-gradient(135deg, #1d4ed8, #6d28d9)' },
                         }}
                     >
                         Create Configuration
@@ -162,7 +162,7 @@ const ConfigsPage = () => {
                         const { json } = config
                         return (
                             <Card key={config._id} elevation={0} sx={{
-                                border: '1px solid', borderColor: isExpanded ? '#5c6bc0' : 'divider',
+                                border: '1px solid', borderColor: isExpanded ? '#2563eb' : 'divider',
                                 borderRadius: 3, transition: 'border-color 0.2s',
                             }}>
                                 <CardContent sx={{ pb: isExpanded ? 0 : undefined }}>
@@ -171,7 +171,7 @@ const ConfigsPage = () => {
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                                                 <Typography variant="h6" fontWeight={600}>{config.name}</Typography>
                                                 <Chip label={json.action} size="small"
-                                                    sx={{ bgcolor: '#e8eaf6', color: '#5c6bc0', fontWeight: 500 }} />
+                                                    sx={{ bgcolor: '#eff6ff', color: '#2563eb', fontWeight: 500 }} />
                                             </Box>
                                             <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
                                                 {json.apps && (

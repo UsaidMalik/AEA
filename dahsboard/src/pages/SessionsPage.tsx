@@ -8,7 +8,7 @@ import {
 } from '@mui/material'
 import {
     Timeline, People, AccessTime, TrendingUp,
-    CalendarToday, OpenInNew, SmartToy, Search,
+    CalendarToday, OpenInNew, AutoAwesome, Search,
     Stop, FiberManualRecord, BarChart,
 } from '@mui/icons-material'
 import {
@@ -54,10 +54,10 @@ interface AppEvent {
 const PIE_COLORS = ['#2196f3', '#4caf50', '#ff9800', '#9c27b0', '#607d8b']
 
 const statCardStyles = [
-    { icon: <Timeline />, color: '#5c6bc0', bg: '#e8eaf6', badge: '+12%', badgeColor: '#4caf50' },
-    { icon: <People />, color: '#4caf50', bg: '#e8f5e9', badge: '+8%', badgeColor: '#4caf50' },
-    { icon: <AccessTime />, color: '#7c4dff', bg: '#f3e5f5', badge: '-5%', badgeColor: '#ff9800' },
-    { icon: <TrendingUp />, color: '#ff9800', bg: '#fff3e0', badge: '+3%', badgeColor: '#4caf50' },
+    { icon: <Timeline />, color: '#2563eb', bg: '#eff6ff' },
+    { icon: <People />, color: '#4caf50', bg: '#e8f5e9' },
+    { icon: <AccessTime />, color: '#7c3aed', bg: '#f5f3ff' },
+    { icon: <TrendingUp />, color: '#ff9800', bg: '#fff7ed' },
 ]
 
 const headerSx = { fontWeight: 700, bgcolor: 'action.hover' } as const
@@ -76,19 +76,10 @@ const StatCard = ({ label, value, color, index }: { label: string; value: string
     return (
         <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
             <CardContent sx={{ p: 3 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                <Box sx={{ mb: 1 }}>
                     <Avatar sx={{ width: 44, height: 44, bgcolor: style.bg, color: style.color }}>
                         {style.icon}
                     </Avatar>
-                    <Chip
-                        label={style.badge}
-                        size="small"
-                        sx={{
-                            fontWeight: 600, fontSize: '0.7rem', height: 22,
-                            bgcolor: style.badgeColor === '#4caf50' ? '#e8f5e9' : '#fff3e0',
-                            color: style.badgeColor,
-                        }}
-                    />
                 </Box>
                 <Typography variant="body2" color="text.secondary">{label}</Typography>
                 <Typography variant="h4" fontWeight={700} sx={{ color }}>{value}</Typography>
@@ -103,13 +94,15 @@ const StatCard = ({ label, value, color, index }: { label: string; value: string
 
 const AIAssistant = ({ sessionId }: { sessionId?: string }) => {
     const [query, setQuery] = useState('')
-    const [ollamaResponse, setOllamaResponse] = useState('')
+    const [aiResponse, setAiResponse] = useState('')
+    const [provider, setProvider] = useState<'groq' | 'ollama' | null>(null)
     const [isLoading, setIsLoading] = useState(false)
 
     const handleSearch = async () => {
         if (!query) return
         setIsLoading(true)
-        setOllamaResponse('')
+        setAiResponse('')
+        setProvider(null)
 
         try {
             const body: Record<string, string> = { question: query }
@@ -121,27 +114,42 @@ const AIAssistant = ({ sessionId }: { sessionId?: string }) => {
                 body: JSON.stringify(body),
             })
 
-            if (!response.ok) throw new Error('Failed to get response from Ollama')
+            if (!response.ok) throw new Error('Failed to get a response from the AI')
 
             const data = await response.json()
             if (data.success) {
-                setOllamaResponse(data.answer)
+                setAiResponse(data.answer)
+                setProvider(data.provider || null)
             } else {
-                setOllamaResponse(`Error: ${data.error}`)
+                setAiResponse(`Error: ${data.error}`)
             }
         } catch (error) {
             console.error('Search error:', error)
-            setOllamaResponse('Error: Could not get a response from the AI.')
+            setAiResponse('Error: Could not get a response from the AI.')
         } finally {
             setIsLoading(false)
         }
     }
 
+    const providerLabel = provider === 'groq' ? 'Groq (cloud)' : provider === 'ollama' ? 'Ollama (local)' : null
+
     return (
         <Paper elevation={0} sx={{ p: 3, border: '1px solid', borderColor: 'divider', borderRadius: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <SmartToy sx={{ color: '#5c6bc0' }} />
+                <AutoAwesome sx={{ color: '#2563eb', fontSize: 20 }} />
                 <Typography variant="subtitle1" fontWeight={600}>AI Assistant</Typography>
+                {providerLabel && (
+                    <Chip
+                        label={providerLabel}
+                        size="small"
+                        sx={{
+                            ml: 'auto', fontSize: '0.7rem', height: 20,
+                            bgcolor: provider === 'groq' ? '#eff6ff' : '#f5f3ff',
+                            color: provider === 'groq' ? '#2563eb' : '#7c3aed',
+                            fontWeight: 600,
+                        }}
+                    />
+                )}
             </Box>
             <Stack direction="row" spacing={2}>
                 <TextField
@@ -160,20 +168,35 @@ const AIAssistant = ({ sessionId }: { sessionId?: string }) => {
                     disabled={isLoading}
                     sx={{
                         minWidth: 110, textTransform: 'none', borderRadius: 2,
-                        background: 'linear-gradient(135deg, #5c6bc0, #7c4dff)',
-                        '&:hover': { background: 'linear-gradient(135deg, #3f51b5, #651fff)' },
+                        background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
+                        '&:hover': { background: 'linear-gradient(135deg, #1d4ed8, #6d28d9)' },
                     }}
                 >
-                    Search
+                    {isLoading ? 'Thinking...' : 'Ask'}
                 </Button>
             </Stack>
 
-            {ollamaResponse && (
-                <Paper variant="outlined" sx={{ mt: 2, p: 2, bgcolor: 'action.hover', borderRadius: 2 }}>
-                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
-                        {ollamaResponse}
-                    </Typography>
-                </Paper>
+            {aiResponse && (
+                <Box sx={{ mt: 2, p: 2, bgcolor: 'action.hover', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+                    {aiResponse.split(/\n\n+/).map((block, i) => {
+                        const lines = block.split('\n').filter(l => l.trim())
+                        const isList = lines.length > 0 && lines.every(l => /^[\*\-]\s/.test(l.trim()))
+                        if (isList) return (
+                            <Box component="ul" key={i} sx={{ pl: 2.5, my: 0.5 }}>
+                                {lines.map((l, j) => (
+                                    <Box component="li" key={j}>
+                                        <Typography variant="body2" component="span"
+                                            dangerouslySetInnerHTML={{ __html: l.replace(/^[\*\-]\s/, '').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') }} />
+                                    </Box>
+                                ))}
+                            </Box>
+                        )
+                        return (
+                            <Typography key={i} variant="body2" sx={{ mb: 0.5 }}
+                                dangerouslySetInnerHTML={{ __html: block.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') }} />
+                        )
+                    })}
+                </Box>
             )}
         </Paper>
     )
@@ -653,7 +676,7 @@ const SessionsPage = () => {
         <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
             {/* Header */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                <Avatar sx={{ bgcolor: '#e8eaf6', color: '#5c6bc0' }}>
+                <Avatar sx={{ bgcolor: '#eff6ff', color: '#2563eb' }}>
                     <BarChart />
                 </Avatar>
                 <Typography variant="h4" fontWeight={700}>Sessions</Typography>
@@ -669,8 +692,8 @@ const SessionsPage = () => {
                 sx={{
                     mb: 3,
                     '& .MuiTab-root': { textTransform: 'none', fontWeight: 600 },
-                    '& .Mui-selected': { color: '#5c6bc0' },
-                    '& .MuiTabs-indicator': { backgroundColor: '#5c6bc0' },
+                    '& .Mui-selected': { color: '#2563eb' },
+                    '& .MuiTabs-indicator': { backgroundColor: '#2563eb' },
                 }}
             >
                 <Tab label="Recent Session" />

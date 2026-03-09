@@ -84,10 +84,12 @@ class WebsiteEngine:
 
 
     def _get_active_window_info(self):
-        """Get active window title and process - works on both platforms"""
+        """Get active window title and process - works on Windows, macOS, Linux"""
         try:
             if PLATFORM == "Windows":
                 return self._get_active_window_windows()
+            elif PLATFORM == "Darwin":
+                return self._get_active_window_macos()
             else:
                 return self._get_active_window_linux()
         except Exception as e:
@@ -119,6 +121,22 @@ class WebsiteEngine:
             return window_title, process_name
         except Exception as e:
             self.logger.error(f"Error getting active window info on Linux: {e}")
+            return None, None
+
+    def _get_active_window_macos(self):
+        """macOS implementation using AppleScript via osascript"""
+        try:
+            app_name = subprocess.check_output([
+                'osascript', '-e',
+                'tell application "System Events" to get name of first process whose frontmost is true'
+            ], stderr=subprocess.DEVNULL).decode().strip().lower()
+            window_title = subprocess.check_output([
+                'osascript', '-e',
+                'tell application "System Events" to get title of front window of (first process whose frontmost is true)'
+            ], stderr=subprocess.DEVNULL).decode().strip()
+            return window_title, app_name
+        except Exception as e:
+            self.logger.error(f"Error getting active window info on macOS: {e}")
             return None, None
 
     def _extract_site_keyword(self, site):

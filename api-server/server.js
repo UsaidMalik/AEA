@@ -1,8 +1,9 @@
 
 
 const express = require('express');
+const path = require('path');
 const { MongoClient, ObjectId } = require('mongodb');
-require('dotenv').config({path: '../.env'});
+require('dotenv').config({path: path.join(__dirname, '../.env')});
 const { handleSmartQuery } = require('./tools/smart-query');
 const { indexResearchFiles, getStatus: getRagStatus } = require('./tools/rag');
 
@@ -250,6 +251,15 @@ if (require.main === module) {
         indexResearchFiles().catch(err => console.error('[RAG] Indexing failed:', err.message));
 
         const app = createApp(db);
+        // Serve built React dashboard in production
+        if(process.env.NODE_ENV !== 'development'){
+            const clientPath = path.join(__dirname, '../dahsboard/dist')
+            app.use(express.static(clientPath))
+            //SPA fallback
+            app.get('*', (req,res) => {
+                res.sendFile(path.join(clientPath, 'index.html'))
+            })
+        }
         app.listen(12039, () => console.log('API server running on http://localhost:12039'));
     });
 }

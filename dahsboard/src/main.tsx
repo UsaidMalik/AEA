@@ -15,9 +15,17 @@ function Root() {
       createTheme({
         palette: {
           mode: prefersDark ? 'dark' : 'light',
-          primary: { main: '#1976d2' },
+          primary: { main: '#2563eb' },
+          secondary: { main: '#7c3aed' },
         },
         shape: { borderRadius: 12 },
+        typography: {
+          fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+          h3: { fontWeight: 800, letterSpacing: '-0.5px' },
+          h4: { fontWeight: 700, letterSpacing: '-0.3px' },
+          h5: { fontWeight: 700 },
+          h6: { fontWeight: 600 },
+        },
       }),
     [prefersDark]
   )

@@ -13,6 +13,18 @@ __pycache__
 *.pyc
 *.pyo
 /processing-engine/venv
+/processing-engine/dist
+/processing-engine/build
+/processing-engine/*.spec.bak
+
+# Bundled binaries (download manually — see Electron/resources/mongod/README.md)
+Electron/resources/mongod/win/
+Electron/resources/mongod/mac/
+Electron/resources/mongod/linux/
+
+# Electron builder output
+Electron/dist-electron/
+Electron/release/
 
 #Logs
 logs

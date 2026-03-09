@@ -4,7 +4,6 @@ import { AppBar, Toolbar, Typography, Button, Box, Chip, Avatar } from '@mui/mat
 import { Home, Settings, BarChart, Person, FiberManualRecord, Folder } from '@mui/icons-material'
 import { useUser } from './context/UserContext'
 import WelcomePage from './pages/WelcomePage'
-import HomePage from './pages/HomePage'
 import ActionPage from './pages/ActionPage'
 import ConfigPage from './pages/ConfigPage'
 import ConfigSelectPage from './pages/ConfigSelectPage'
@@ -12,7 +11,7 @@ import ConfigsPage from './pages/ConfigsPage'
 import SessionsPage from './pages/SessionsPage'
 
 const navItems = [
-    { label: 'Home', path: '/home', icon: <Home sx={{ fontSize: 18 }} /> },
+    { label: 'Home', path: '/action', icon: <Home sx={{ fontSize: 18 }} /> },
     { label: 'Sessions', path: '/sessions', icon: <BarChart sx={{ fontSize: 18 }} /> },
     { label: 'Configurations', path: '/configs', icon: <Folder sx={{ fontSize: 18 }} /> },
     { label: 'New Configuration', path: '/config/new', icon: <Settings sx={{ fontSize: 18 }} /> },
@@ -52,8 +51,8 @@ const App = () => {
                 }}>
                     <Toolbar>
                         <Typography variant="h6" fontWeight={700} sx={{
-                            cursor: 'pointer', color: '#5c6bc0',
-                        }} onClick={() => navigate('/home')}>
+                            cursor: 'pointer', color: '#2563eb',
+                        }} onClick={() => navigate('/action')}>
                             AEA Platform
                         </Typography>
 
@@ -67,8 +66,8 @@ const App = () => {
                                         onClick={() => navigate(item.path)}
                                         sx={{
                                             textTransform: 'none', fontWeight: active ? 600 : 400,
-                                            color: active ? '#5c6bc0' : 'text.secondary',
-                                            borderBottom: active ? '2px solid #5c6bc0' : '2px solid transparent',
+                                            color: active ? '#2563eb' : 'text.secondary',
+                                            borderBottom: active ? '2px solid #2563eb' : '2px solid transparent',
                                             borderRadius: 0, px: 2,
                                         }}
                                     >
@@ -95,7 +94,7 @@ const App = () => {
                         />
 
                         <Chip
-                            avatar={<Avatar sx={{ bgcolor: '#e8eaf6', color: '#5c6bc0', width: 28, height: 28 }}><Person sx={{ fontSize: 16 }} /></Avatar>}
+                            avatar={<Avatar sx={{ bgcolor: '#e8eaf6', color: '#2563eb', width: 28, height: 28 }}><Person sx={{ fontSize: 16 }} /></Avatar>}
                             label={userName}
                             variant="outlined"
                             sx={{ fontWeight: 500, borderColor: 'divider' }}
@@ -106,7 +105,7 @@ const App = () => {
 
             <Routes>
                 <Route path="/" element={<WelcomePage />} />
-                <Route path="/home" element={<HomePage />} />
+                <Route path="/home" element={<Navigate to="/action" />} />
                 <Route path="/action" element={<ActionPage />} />
                 <Route path="/config/new" element={<ConfigPage />} />
                 <Route path="/configs" element={<ConfigsPage />} />

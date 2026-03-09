@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Container, Typography, TextField, Button, Paper, Box, Avatar } from '@mui/material'
-import { Shield, ArrowForward } from '@mui/icons-material'
+import { MonitorHeart, ArrowForward } from '@mui/icons-material'
 import { useUser } from '../context/UserContext'
 import { useNavigate } from 'react-router-dom'
 
@@ -12,13 +12,13 @@ const WelcomePage = () => {
     const handleContinue = () => {
         if (name.trim()) {
             setUserName(name.trim())
-            navigate('/home')
+            navigate('/action')
         }
     }
 
     const handleGuest = () => {
         setUserName('Guest')
-        navigate('/home')
+        navigate('/action')
     }
 
     return (
@@ -28,35 +28,39 @@ const WelcomePage = () => {
         }}>
             <Avatar sx={{
                 width: 72, height: 72, mb: 3,
-                bgcolor: '#7c4dff', boxShadow: '0 4px 20px rgba(124,77,255,0.3)',
+                background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
+                boxShadow: '0 4px 24px rgba(37,99,235,0.25)',
             }}>
-                <Shield sx={{ fontSize: 36 }} />
+                <MonitorHeart sx={{ fontSize: 36 }} />
             </Avatar>
 
-            <Typography variant="h3" fontWeight={700} sx={{
-                background: 'linear-gradient(135deg, #5c6bc0, #7c4dff)',
+            <Typography variant="h3" textAlign="center" sx={{
+                background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
                 WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
                 mb: 1,
             }}>
-                Welcome to AEA Platform
+                AEA Platform
             </Typography>
 
-            <Typography variant="body1" color="text.secondary" mb={4}>
-                Let's personalize your experience
+            <Typography variant="body1" color="text.secondary" mb={5} textAlign="center">
+                Productivity enforcement for focused sessions
             </Typography>
 
             <Paper elevation={0} sx={{
                 p: 4, width: '100%', maxWidth: 400,
                 borderRadius: 3, border: '1px solid', borderColor: 'divider',
             }}>
-                <Typography variant="subtitle1" fontWeight={600} mb={2}>
-                    What should we call you?
+                <Typography variant="subtitle1" fontWeight={600} mb={0.5}>
+                    Your name
+                </Typography>
+                <Typography variant="body2" color="text.secondary" mb={2}>
+                    Used to personalise your session view
                 </Typography>
                 <TextField
                     value={name}
                     onChange={e => setName(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleContinue()}
-                    placeholder="Enter your name"
+                    placeholder="e.g. Alex"
                     fullWidth
                     size="small"
                     sx={{ mb: 2 }}
@@ -69,20 +73,20 @@ const WelcomePage = () => {
                     endIcon={<ArrowForward />}
                     sx={{
                         py: 1.5, borderRadius: 2, textTransform: 'none', fontWeight: 600,
-                        background: 'linear-gradient(135deg, #5c6bc0, #7c4dff)',
-                        '&:hover': { background: 'linear-gradient(135deg, #3f51b5, #651fff)' },
+                        background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
+                        '&:hover': { background: 'linear-gradient(135deg, #1d4ed8, #6d28d9)' },
                     }}
                 >
-                    Continue
+                    Get Started
                 </Button>
             </Paper>
 
             <Box sx={{ mt: 3, textAlign: 'center' }}>
-                <Typography variant="body2" color="text.secondary">Or</Typography>
+                <Typography variant="body2" color="text.secondary">or</Typography>
                 <Button variant="text" onClick={handleGuest} sx={{
-                    textTransform: 'none', color: '#5c6bc0', fontWeight: 500,
+                    textTransform: 'none', color: '#2563eb', fontWeight: 500,
                 }}>
-                    continue as Guest
+                    Continue as Guest
                 </Button>
             </Box>
         </Container>

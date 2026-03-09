@@ -56,8 +56,8 @@ const PolicySection = ({
                     onClick={() => handleAdd(input, setInput, mode, setAllowed, setDenied)}
                     sx={{
                         textTransform: 'none', borderRadius: 2,
-                        background: 'linear-gradient(135deg, #5c6bc0, #7c4dff)',
-                        '&:hover': { background: 'linear-gradient(135deg, #3f51b5, #651fff)' },
+                        background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
+                        '&:hover': { background: 'linear-gradient(135deg, #1d4ed8, #6d28d9)' },
                     }}
                 >
                     Add
@@ -168,7 +168,7 @@ const ConfigPage = () => {
     return (
         <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                <Avatar sx={{ bgcolor: '#e8eaf6', color: '#5c6bc0' }}>
+                <Avatar sx={{ bgcolor: '#eff6ff', color: '#2563eb' }}>
                     <Computer />
                 </Avatar>
                 <Typography variant="h4" fontWeight={700}>Create New Configuration</Typography>
@@ -286,8 +286,8 @@ const ConfigPage = () => {
                     disabled={!configName.trim() || !action}
                     sx={{
                         px: 4, borderRadius: 2, textTransform: 'none', fontWeight: 600,
-                        background: 'linear-gradient(135deg, #5c6bc0, #7c4dff)',
-                        '&:hover': { background: 'linear-gradient(135deg, #3f51b5, #651fff)' },
+                        background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
+                        '&:hover': { background: 'linear-gradient(135deg, #1d4ed8, #6d28d9)' },
                     }}
                 >
                     Save Configuration

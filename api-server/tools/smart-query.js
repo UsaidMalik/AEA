@@ -1,20 +1,54 @@
 /**
  * ~Raheem
  * Smart Query — LLM Orchestrator
- * Combines query-tools (session metrics) + RAG (research knowledge) + Ollama
+ * Combines query-tools (session metrics) + RAG (research knowledge) + LLM
  * to answer user questions with data-backed, research-informed analysis.
+ *
+ * LLM routing:
+ *   Online + GROQ_API_KEY set → Groq (cloud, free tier — llama3 / mixtral)
+ *   Offline or no key         → Ollama (local)
  */
 
 const { queryTools } = require('./query-tools');
 const { searchKnowledge } = require('./rag');
 
-const OLLAMA_URL = process.env.OLLAMA_URL;
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL;
-const OLLAMA_TIMEOUT_MS = parseInt(process.env.OLLAMA_TIMEOUT_MS) || 60000; // 60s default
+const OLLAMA_URL          = process.env.OLLAMA_URL;
+const OLLAMA_MODEL        = process.env.OLLAMA_MODEL;
+const OLLAMA_TIMEOUT_MS   = parseInt(process.env.OLLAMA_TIMEOUT_MS) || 60000;
+const GROQ_API_KEY        = process.env.GROQ_API_KEY;
+const GROQ_MODEL          = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
+const CLOUD_TIMEOUT_MS    = 20000;
+const INTERNET_CHECK_URL  = 'https://1.1.1.1';   // Cloudflare — fast, no redirect
+const INTERNET_CACHE_TTL  = 30000;               // re-check every 30s
 
 
 // ============================================================================
-// Ollama API Call (with timeout)
+// Internet Connectivity Check (cached)
+// ============================================================================
+
+let _internetCache = { online: null, ts: 0 };
+
+async function isOnline() {
+    const now = Date.now();
+    if (_internetCache.online !== null && now - _internetCache.ts < INTERNET_CACHE_TTL) {
+        return _internetCache.online;
+    }
+    try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 3000);
+        await fetch(INTERNET_CHECK_URL, { method: 'HEAD', signal: controller.signal });
+        clearTimeout(timer);
+        _internetCache = { online: true, ts: now };
+        return true;
+    } catch {
+        _internetCache = { online: false, ts: now };
+        return false;
+    }
+}
+
+
+// ============================================================================
+// Ollama API Call (local, with timeout)
 // ============================================================================
 
 async function callOllama(messages, timeoutMs = OLLAMA_TIMEOUT_MS) {
@@ -25,11 +59,7 @@ async function callOllama(messages, timeoutMs = OLLAMA_TIMEOUT_MS) {
         const res = await fetch(`${OLLAMA_URL}/api/chat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                model: OLLAMA_MODEL,
-                messages,
-                stream: false,
-            }),
+            body: JSON.stringify({ model: OLLAMA_MODEL, messages, stream: false }),
             signal: controller.signal,
         });
 
@@ -42,12 +72,73 @@ async function callOllama(messages, timeoutMs = OLLAMA_TIMEOUT_MS) {
         return data.message?.content || '';
     } catch (err) {
         if (err.name === 'AbortError') {
-            throw new Error(`Ollama timed out after ${timeoutMs / 1000}s — model may be overloaded`);
+            throw new Error(`Ollama timed out after ${timeoutMs / 1000}s`);
         }
         throw err;
     } finally {
         clearTimeout(timer);
     }
+}
+
+
+// ============================================================================
+// AI API CALL ( For Now Groq)
+// ============================================================================
+
+async function callCloudAI(messages, timeoutMs = CLOUD_TIMEOUT_MS) {
+    if (!GROQ_API_KEY) throw new Error('GROQ_API_KEY not configured');
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${GROQ_API_KEY}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ model: GROQ_MODEL, messages, max_tokens: 1024 }),
+            signal: controller.signal,
+        });
+
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`Groq API error (${res.status}): ${text}`);
+        }
+
+        const data = await res.json();
+        return data.choices?.[0]?.message?.content || '';
+    } catch (err) {
+        if (err.name === 'AbortError') throw new Error('Groq API timed out');
+        throw err;
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+
+// ============================================================================
+// Unified LLM Router — cloud first, Ollama fallback
+// ============================================================================
+
+async function callLLM(messages, timeoutMs = OLLAMA_TIMEOUT_MS) {
+    const online = await isOnline();
+
+    if (online && GROQ_API_KEY) {
+        try {
+            console.log(`[LLM] Provider: Groq (${GROQ_MODEL})`);
+            const result = await callCloudAI(messages);
+            return { text: result, provider: 'groq' };
+        } catch (err) {
+            console.warn(`[LLM] Groq failed, falling back to Ollama: ${err.message}`);
+        }
+    } else {
+        console.log(`[LLM] Provider: Ollama (local) — online=${online}, apiKey=${!!GROQ_API_KEY}`);
+    }
+
+    const text = await callOllama(messages, timeoutMs);
+    return { text, provider: 'ollama' };
 }
 
 
@@ -58,7 +149,6 @@ async function callOllama(messages, timeoutMs = OLLAMA_TIMEOUT_MS) {
 function classifyQuestion(question) {
     const q = question.toLowerCase();
 
-    // Data keywords — questions that need DB tools
     const dataKeywords = [
         'how many', 'how much', 'violation', 'session', 'app', 'website',
         'focus', 'stats', 'duration', 'time spent', 'emotion', 'denied',
@@ -101,45 +191,39 @@ Examples:
 "How many violations?" → [{"name":"getViolationCounts"}]
 "What apps did I use?" → [{"name":"getTopApps"}]
 "Full summary" → [{"name":"getSessionOverview"},{"name":"getSessionStats"},{"name":"getTopApps"}]
-"Average focus last 5 sessions" → [{"name":"customQuery","querySpec":{"collection":"sessions","pipeline":[{"$sort":{"started_at":-1}},{"$limit":5},{"$group":{"_id":null,"avg":{"$avg":"$stats.focus_pct"}}}]}}]`;
+"Average focus last 5 sessions" → [{"name":"customQuery","querySpec":{"collection":"sessions","pipeline":
+[{"$sort":{"started_at":-1}},{"$limit":5},{"$group":{"_id":null,"avg":{"$avg":"$stats.focus_pct"}}}]}}]`;
 
-    const response = await callOllama([
+    const { text: response } = await callLLM([
         { role: 'system', content: prompt },
         { role: 'user', content: question },
     ], OLLAMA_TIMEOUT_MS);
 
-    // Extract JSON array from response (with sanitisation for common LLM quirks)
     const jsonMatch = response.match(/\[[\s\S]*\]/);
     if (!jsonMatch) throw new Error('LLM did not return a valid tool selection');
 
     let raw = jsonMatch[0];
-    // Fix common LLM JSON issues
-    raw = raw.replace(/,\s*([}\]])/g, '$1');   // trailing commas
-    raw = raw.replace(/'/g, '"');               // single quotes → double
-    raw = raw.replace(/(\w+)\s*:/g, '"$1":');   // unquoted keys
-    raw = raw.replace(/""+/g, '"');             // doubled quotes from above
+    raw = raw.replace(/,\s*([}\]])/g, '$1');
+    raw = raw.replace(/'/g, '"');
+    raw = raw.replace(/(\w+)\s*:/g, '"$1":');
+    raw = raw.replace(/""+/g, '"');
 
     let selected;
     try {
         selected = JSON.parse(raw);
     } catch {
-        // Fallback: extract tool names with a regex
         const nameMatches = [...raw.matchAll(/"name"\s*:\s*"([^"]+)"/g)];
         if (nameMatches.length === 0) throw new Error('LLM returned unparseable tool selection');
         selected = nameMatches.map(m => ({ name: m[1] }));
     }
 
-    // Validate and normalize
     const validNames = queryTools.map(t => t.name);
     return selected
         .filter(item => {
             const name = typeof item === 'string' ? item : item.name;
             return validNames.includes(name);
         })
-        .map(item => {
-            if (typeof item === 'string') return { name: item };
-            return item;
-        });
+        .map(item => (typeof item === 'string' ? { name: item } : item));
 }
 
 
@@ -155,11 +239,9 @@ async function executeTools(db, session_id = null, toolSelections) {
             const tool = queryTools.find(t => t.name === selection.name);
             if (!tool) return;
             try {
-                if (tool.requiresSpec) {
-                    results[selection.name] = await tool.execute(db, session_id, selection.querySpec);
-                } else {
-                    results[selection.name] = await tool.execute(db, session_id);
-                }
+                results[selection.name] = tool.requiresSpec
+                    ? await tool.execute(db, session_id, selection.querySpec)
+                    : await tool.execute(db, session_id);
             } catch (err) {
                 results[selection.name] = { error: err.message };
             }
@@ -171,7 +253,7 @@ async function executeTools(db, session_id = null, toolSelections) {
 
 
 // ============================================================================
-// Generate Answer — data-backed (with session data + RAG)
+// Generate Answer — data-backed (session data + RAG)
 // ============================================================================
 
 async function generateDataAnswer(question, toolResults, ragContext) {
@@ -196,7 +278,7 @@ Session data:
 ${JSON.stringify(toolResults, null, 2)}
 ${researchBlock}`;
 
-    return await callOllama([
+    return await callLLM([
         { role: 'system', content: prompt },
         { role: 'user', content: question },
     ]);
@@ -227,7 +309,7 @@ Your style:
 - You can discuss productivity techniques, focus strategies, time management, emotional regulation, and work habits.
 ${researchBlock}`;
 
-    return await callOllama([
+    return await callLLM([
         { role: 'system', content: prompt },
         { role: 'user', content: question },
     ]);
@@ -241,85 +323,52 @@ ${researchBlock}`;
 async function handleSmartQuery(db, question, session_id) {
     const t0 = Date.now();
 
-    // Classify: does this question need session data or is it general?
     const questionType = classifyQuestion(question);
     console.log(`[SmartQuery] Question type: ${questionType}`);
 
-    // Always fetch RAG in background
     const ragPromise = searchKnowledge(question).catch(err => {
         console.error('[SmartQuery] RAG search failed (non-fatal):', err.message);
         return [];
     });
 
-    // ── GENERAL questions: skip tool selection entirely (1 LLM call instead of 2) ──
+    // ── GENERAL questions: 1 LLM call ──
     if (questionType === 'general') {
         const ragContext = await ragPromise;
-        console.log(`[SmartQuery] RAG took ${Date.now() - t0}ms`);
-
-        const t1 = Date.now();
-        const answer = await generateGeneralAnswer(question, ragContext);
-        console.log(`[SmartQuery] Answer generation took ${Date.now() - t1}ms`);
-        console.log(`[SmartQuery] Total (general path): ${Date.now() - t0}ms`);
-
-        return {
-            success: true,
-            answer,
-            tools_used: [],
-            research_used: ragContext.length > 0,
-        };
+        const { text: answer, provider } = await generateGeneralAnswer(question, ragContext);
+        console.log(`[SmartQuery] Total (general path): ${Date.now() - t0}ms via ${provider}`);
+        return { success: true, answer, provider, tools_used: [], research_used: ragContext.length > 0 };
     }
 
-    // ── DATA questions: full pipeline with tool selection ──
+    // ── DATA questions: full pipeline ──
     let toolSelections;
     try {
         toolSelections = await selectTools(question);
-        console.log(`[SmartQuery] Tool selection took ${Date.now() - t0}ms → ${toolSelections.map(t => t.name).join(', ')}`);
+        console.log(`[SmartQuery] Tools selected: ${toolSelections.map(t => t.name).join(', ')}`);
     } catch (err) {
-        // If tool selection fails, fall back to general answer
         console.error(`[SmartQuery] Tool selection failed, falling back to general: ${err.message}`);
         const ragContext = await ragPromise;
-        const answer = await generateGeneralAnswer(question, ragContext);
-        console.log(`[SmartQuery] Total (fallback path): ${Date.now() - t0}ms`);
-
-        return {
-            success: true,
-            answer,
-            tools_used: [],
-            research_used: ragContext.length > 0,
-        };
+        const { text: answer, provider } = await generateGeneralAnswer(question, ragContext);
+        return { success: true, answer, provider, tools_used: [], research_used: ragContext.length > 0 };
     }
 
     if (toolSelections.length === 0) {
-        // No tools matched — fall back to general answer instead of failing
         const ragContext = await ragPromise;
-        const answer = await generateGeneralAnswer(question, ragContext);
-        console.log(`[SmartQuery] Total (no-tools fallback): ${Date.now() - t0}ms`);
-
-        return {
-            success: true,
-            answer,
-            tools_used: [],
-            research_used: ragContext.length > 0,
-        };
+        const { text: answer, provider } = await generateGeneralAnswer(question, ragContext);
+        return { success: true, answer, provider, tools_used: [], research_used: ragContext.length > 0 };
     }
 
-    // Execute tools + RAG in parallel
-    const t1 = Date.now();
     const [toolResults, ragContext] = await Promise.all([
         executeTools(db, session_id, toolSelections),
         ragPromise,
     ]);
-    console.log(`[SmartQuery] Tools + RAG took ${Date.now() - t1}ms (parallel)`);
 
-    // Generate the final answer
-    const t2 = Date.now();
-    const answer = await generateDataAnswer(question, toolResults, ragContext);
-    console.log(`[SmartQuery] Answer generation took ${Date.now() - t2}ms`);
-    console.log(`[SmartQuery] Total pipeline: ${Date.now() - t0}ms`);
+    const { text: answer, provider } = await generateDataAnswer(question, toolResults, ragContext);
+    console.log(`[SmartQuery] Total pipeline: ${Date.now() - t0}ms via ${provider}`);
 
     return {
         success: true,
         answer,
+        provider,
         tools_used: toolSelections.map(t => t.name),
         research_used: ragContext.length > 0,
     };
@@ -327,4 +376,3 @@ async function handleSmartQuery(db, question, session_id) {
 
 
 module.exports = { handleSmartQuery, classifyQuestion };
-

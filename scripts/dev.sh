@@ -79,7 +79,7 @@ echo "[AEA] API Server          PID=$API_PID   →  http://localhost:12039"
 # ── Dashboard ─────────────────────────────────────────
 cd "$ROOT/dahsboard"
 echo "Dashboard starting..." > "$LOGS/dashboard.log"
-npm run dev >> "$LOGS/dashboard.log" 2>&1 &
+npm.cmd run dev >> "$LOGS/dashboard.log" 2>&1 &
 DASH_PID=$!
 echo "[AEA] Dashboard           PID=$DASH_PID  →  http://localhost:5173"
 
