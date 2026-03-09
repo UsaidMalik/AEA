@@ -7,6 +7,17 @@ const fs = require('fs')
 const ROOT = path.join(__dirname, '..')
 const children = []
 
+// Auto-create .env from .env.example if missing (first-run setup)
+function ensureEnvFile() {
+    const envPath = path.join(ROOT, '.env')
+    const examplePath = path.join(ROOT, '.env.example')
+    if (!fs.existsSync(envPath) && fs.existsSync(examplePath)) {
+        fs.copyFileSync(examplePath, envPath)
+        console.log('[AEA] Created .env from .env.example — please add your GROQ_API_KEY')
+    }
+}
+ensureEnvFile()
+
 // Spawning a child process, tracking for cleanup
 function spawnService(cmd, args, opts = {}) {
     const {env: extraEnv, cwd, ...rest} = opts

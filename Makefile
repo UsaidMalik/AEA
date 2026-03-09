@@ -3,7 +3,7 @@
 
 .PHONY: install install-api install-dashboard install-engine install-electron \
         mongo ollama api dashboard engine electron build lint clean test test-ps dev dev-ps \
-        build-engine pack dist
+        build-engine pack dist release release-ps
 
 # Detect Python binary (Windows: py, Linux/macOS: python3 or python)
 PYTHON ?= $(shell py --version > /dev/null 2>&1 && echo py || (python3 --version > /dev/null 2>&1 && echo python3 || echo python))
@@ -73,6 +73,13 @@ test:
 
 test-ps:
 	powershell -ExecutionPolicy Bypass -File scripts\test.ps1
+
+# Full production build — downloads mongod, builds everything, outputs installer
+release:
+	bash scripts/build.sh
+
+release-ps:
+	powershell -ExecutionPolicy Bypass -File scripts\build.ps1
 
 # ── Dev (start all 3 services together) ───────────────
 dev:

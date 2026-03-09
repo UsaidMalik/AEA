@@ -75,8 +75,8 @@
     "open": "wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .",
     "start": "cross-env NODE_ENV=development electron .",
     "start:prod": "electron .",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder",
+    "pack": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --dir",
+    "dist": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "build": {
@@ -97,30 +97,24 @@
         "to": "dahsboard/dist"
       },
       {
-        "from": "../processing-engine/dist/api",
-        "to": "engine/api"
+        "from": "resources/mongod/win/mongod.exe",
+        "to": "mongod/mongod.exe"
+      },
+      {
+        "from": "../processing-engine/dist/api.exe",
+        "to": "engine/api.exe"
       }
     ],
     "win": {
       "target": "nsis",
-      "icon": "../aea_logo.ico",
-      "extraResources": [
-        {"from": "resources/mongod/win/mongod.exe", "to": "mongod/mongod.exe"},
-        {"from": "../processing-engine/dist/api.exe", "to": "engine/api.exe"}
-      ]
+      "icon": "../aea_logo.ico"
     },
     "mac": {
       "target": "dmg",
-      "icon": "../aea_logo.ico",
-      "extraResources": [
-        {"from": "resources/mongod/mac/mongod", "to": "mongod/mongod"}
-      ]
+      "icon": "../aea_logo.ico"
     },
     "linux": {
-      "target": "AppImage",
-      "extraResources": [
-        {"from": "resources/mongod/linux/mongod", "to": "mongod/mongod"}
-      ]
+      "target": "AppImage"
     }
   },
   "repository": {

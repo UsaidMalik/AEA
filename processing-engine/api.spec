@@ -10,14 +10,15 @@ import os
 
 block_cipher = None
 
+# Logo lives at repo root (one level up from processing-engine/)
+_logo = os.path.abspath(os.path.join(os.path.dirname(SPEC), '..', 'aea_logo.ico'))
+_datas = [(_logo, '.')] if os.path.exists(_logo) else []
+
 a = Analysis(
     ['api.py'],
     pathex=['.'],
     binaries=[],
-    datas=[
-        # Include any data files the engine needs at runtime
-        ('aea_logo.ico', '.'),
-    ],
+    datas=_datas,
     hiddenimports=[
         # Flask and its internals
         'flask',
