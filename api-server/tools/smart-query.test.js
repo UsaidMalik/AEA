@@ -213,4 +213,82 @@ describe('handleSmartQuery', () => {
         expect(result.answer).toBe('Still works without RAG!');
         expect(result.research_used).toBe(false);
     });
+
+    // Test 8: provider field is always returned
+    test('result always includes a provider field', async () => {
+        global.fetch = makeOllamaFetch('Some answer');
+        const db = mockDb();
+
+        const result = await handleSmartQuery(db, 'how can I focus better?', null);
+
+        expect(result).toHaveProperty('provider');
+        expect(['groq', 'ollama']).toContain(result.provider);
+    });
+});
+
+
+// ============================================================================
+// LLM provider routing — Groq vs Ollama
+// GROQ_API_KEY is a module-level const in smart-query.js, so these tests
+// use jest.resetModules() in beforeEach to reload the module with the env
+// var already set. The auto-mock for ./rag (from top-level jest.mock) is
+// still active — we just configure searchKnowledge on the shared instance.
+// ============================================================================
+
+describe('LLM provider routing (Groq vs Ollama)', () => {
+    // General question only (no data keywords) → ONE callLLM call, no selectTools.
+    const GENERAL_Q = 'what is the pomodoro technique?';
+
+    beforeEach(() => {
+        jest.resetModules();
+    });
+    afterEach(() => {
+        delete process.env.GROQ_API_KEY;
+        global.fetch = undefined;
+    });
+
+    test('routes to Groq when online and GROQ_API_KEY is set', async () => {
+        process.env.GROQ_API_KEY = 'test-key';
+        const { handleSmartQuery: sq } = require('./smart-query');
+        // Both smart-query.js and this require() share the same fresh auto-mock
+        // instance — configure it here so handleSmartQuery's call resolves [].
+        require('./rag').searchKnowledge.mockResolvedValue([]);
+
+        // mockResolvedValue (not Once) covers isOnline HEAD (if cache cold)
+        // AND the Groq API call — isOnline only checks res.ok, ignores json.
+        global.fetch = jest.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({ choices: [{ message: { content: 'Groq says pomodoro!' } }] }),
+        });
+
+        const result = await sq(mockDb(), GENERAL_Q, null);
+
+        expect(result.success).toBe(true);
+        expect(result.answer).toBe('Groq says pomodoro!');
+        expect(result.provider).toBe('groq');
+    });
+
+    test('falls back to Ollama when Groq returns a non-ok response', async () => {
+        process.env.GROQ_API_KEY = 'test-key';
+        const { handleSmartQuery: sq } = require('./smart-query');
+        require('./rag').searchKnowledge.mockResolvedValue([]);
+
+        // 3 slots handle both cache states:
+        //   cold:  isOnline(ok) → Groq(503) → Ollama(ok)
+        //   warm:  Groq(ok slot) → Groq(503) → Ollama(ok)
+        global.fetch = jest.fn()
+            .mockResolvedValueOnce({ ok: true })
+            .mockResolvedValueOnce({ ok: false, status: 503,
+                                     text: async () => 'Groq unavailable' })
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({ message: { content: 'Ollama backup answer' } }),
+            });
+
+        const result = await sq(mockDb(), GENERAL_Q, null);
+
+        expect(result.success).toBe(true);
+        expect(result.provider).toBe('ollama');
+        expect(result.answer).toBe('Ollama backup answer');
+    });
 });

@@ -7,14 +7,31 @@ const fs = require('fs')
 const ROOT = path.join(__dirname, '..')
 const children = []
 
-// Auto-create .env from .env.example if missing (first-run setup)
+// Load a .env file into process.env (minimal parser, no dotenv dependency).
+// Existing env vars are never overridden — OS/shell values always win.
+function loadEnvFile(envPath) {
+    if (!fs.existsSync(envPath)) return
+    fs.readFileSync(envPath, 'utf8').split(/\r?\n/).forEach(line => {
+        const m = line.match(/^([^#\s=][^=]*)=(.*)$/)
+        if (m && !(m[1].trim() in process.env))
+            process.env[m[1].trim()] = m[2].trim().replace(/^['"]|['"]$/g, '')
+    })
+}
+
+// On first run, copy the bundled default.env → .env so services find it.
+// In dev mode, fall back to .env.example (existing behaviour).
 function ensureEnvFile() {
     const envPath = path.join(ROOT, '.env')
-    const examplePath = path.join(ROOT, '.env.example')
-    if (!fs.existsSync(envPath) && fs.existsSync(examplePath)) {
-        fs.copyFileSync(examplePath, envPath)
-        console.log('[AEA] Created .env from .env.example — please add your GROQ_API_KEY')
+    if (!fs.existsSync(envPath)) {
+        const source = app.isPackaged
+            ? path.join(ROOT, 'default.env')   // bundled with real keys
+            : path.join(ROOT, '.env.example')   // dev fallback
+        if (fs.existsSync(source)) {
+            fs.copyFileSync(source, envPath)
+            console.log(`[AEA] Created .env from ${path.basename(source)}`)
+        }
     }
+    loadEnvFile(envPath)
 }
 ensureEnvFile()
 

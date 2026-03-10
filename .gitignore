@@ -1,5 +1,6 @@
-#Environment 
+#Environment
 .env
+default.env
 
 # Node
 node_modules

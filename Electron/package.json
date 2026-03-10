@@ -88,6 +88,10 @@
     ],
     "extraResources": [
       {
+        "from": "../default.env",
+        "to": "default.env"
+      },
+      {
         "from": "../api-server",
         "to": "api-server",
         "filter": ["**/*", "!node_modules/.cache/**", "!*.log"]
