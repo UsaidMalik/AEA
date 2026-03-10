@@ -16,9 +16,12 @@ import subprocess
 #Windows-specific for getting active window/url
 PLATFORM = platform.system()
 if PLATFORM == "Windows":
-    import win32gui #pip install pywin32
-    import win32process
-    import psutil  #pip install psutil
+    try:
+        import win32gui
+        import win32process
+        import psutil
+    except ImportError:
+        win32gui = win32process = psutil = None
 
 class WebsiteEngine:
     def __init__(self, action_config, session_id=None, poll_interval=2):

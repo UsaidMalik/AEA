@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { AppBar, Toolbar, Typography, Button, Box, Chip, Avatar } from '@mui/material'
+import { AppBar, Toolbar, Typography, Button, Box, Chip, Avatar, Alert } from '@mui/material'
 import { Home, Settings, BarChart, Person, FiberManualRecord, Folder } from '@mui/icons-material'
 import { useUser } from './context/UserContext'
 import WelcomePage from './pages/WelcomePage'
@@ -23,6 +23,7 @@ const App = () => {
     const navigate = useNavigate()
     const isWelcome = location.pathname === '/'
     const [sessionActive, setSessionActive] = useState(false)
+    const [missingXdotool, setMissingXdotool] = useState(false)
 
     useEffect(() => {
         if (!userName || isWelcome) return
@@ -36,6 +37,13 @@ const App = () => {
         const interval = setInterval(check, 5000)
         return () => clearInterval(interval)
     }, [userName, isWelcome])
+
+    useEffect(() => {
+        fetch('/api/capabilities')
+            .then(r => r.json())
+            .then(data => { if (data.platform === 'linux' && data.xdotool === false) setMissingXdotool(true) })
+            .catch(() => {})
+    }, [])
 
     if (!userName && !isWelcome) {
         return <Navigate to="/" />
@@ -101,6 +109,12 @@ const App = () => {
                         />
                     </Toolbar>
                 </AppBar>
+            )}
+
+            {missingXdotool && (
+                <Alert severity="warning" sx={{ borderRadius: 0 }}>
+                    App & website tracking unavailable — install xdotool: <code>sudo apt install xdotool</code>
+                </Alert>
             )}
 
             <Routes>

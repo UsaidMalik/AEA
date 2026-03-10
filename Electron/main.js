@@ -71,7 +71,8 @@ async function startBackend() {
             cwd: path.join(process.resourcesPath, 'engine')
         })
 
-        // 4. Ollama is optional (Groq is the default LLM). Skip in packaged mode.
+        // 4. Ollama (optional fallback LLM — start if installed, silently skip if not)
+        spawnService('ollama', ['serve'])
 
     } else {
         // ── Development: use system commands ──────────────────────────────

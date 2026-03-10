@@ -427,3 +427,20 @@ describe('Session proxy endpoints', () => {
         expect(res.body.error).toBe('Processing engine not available');
     });
 });
+
+// ============================================================================
+// Capabilities
+// ============================================================================
+
+describe('GET /api/capabilities', () => {
+    test('returns 200 with platform field', async () => {
+        const db = mockDb();
+        const app = createApp(db);
+        const res = await request(app).get('/api/capabilities');
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveProperty('platform');
+        // xdotool is null on non-Linux, true/false on Linux
+        expect(res.body.xdotool === null ||
+               typeof res.body.xdotool === 'boolean').toBe(true);
+    });
+});

@@ -17,9 +17,12 @@ import subprocess
 # Windows-specific for getting active window
 PLATFORM = platform.system()
 if PLATFORM == "Windows":
-    import win32gui
-    import win32process
-    import psutil
+    try:
+        import win32gui
+        import win32process
+        import psutil
+    except ImportError:
+        win32gui = win32process = psutil = None
 
 
 class AppEngine:

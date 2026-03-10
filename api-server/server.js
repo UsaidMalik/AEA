@@ -196,6 +196,23 @@ function createApp(db) {
         }
     });
 
+    // GET /api/capabilities — system capability detection (Linux xdotool check)
+    app.get('/api/capabilities', (req, res) => {
+        const { execSync } = require('child_process');
+        const os = require('os');
+        const platform = os.platform();
+        let xdotool = null;
+        if (platform === 'linux') {
+            try {
+                execSync('which xdotool', { stdio: 'ignore' });
+                xdotool = true;
+            } catch {
+                xdotool = false;
+            }
+        }
+        res.json({ platform, xdotool });
+    });
+
     // Session control — proxy to Flask
     app.post('/api/session/start', async (req, res) => {
         try {
