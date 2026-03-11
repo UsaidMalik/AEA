@@ -83,10 +83,20 @@ async function startBackend() {
         spawnService(mongodBin, ['--dbpath', dbPath, '--port', '27017'])
 
         // 2. Node.js API server — reuse Electron's own Node via ELECTRON_RUN_AS_NODE
+        // Read bundled env vars explicitly so they're always available regardless of
+        // process.env propagation edge cases in AppImage
+        const bundledEnv = {}
+        const defEnvPath = path.join(resPath, 'default.env')
+        if (fs.existsSync(defEnvPath)) {
+            fs.readFileSync(defEnvPath, 'utf8').split(/\r?\n/).forEach(line => {
+                const m = line.replace(/^\uFEFF/, '').match(/^([A-Z_][A-Z0-9_]*)=(.*)$/)
+                if (m) bundledEnv[m[1]] = m[2].trim().replace(/^['"]|['"]$/g, '')
+            })
+        }
         const serverPath = path.join(resPath, 'api-server', 'server.js')
         spawnService(process.execPath, [serverPath], {
             cwd: path.join(resPath, 'api-server'),
-            env: {ELECTRON_RUN_AS_NODE: '1', DOTENV_CONFIG_PATH: path.join(resPath, 'default.env')}
+            env: {ELECTRON_RUN_AS_NODE: '1', ...bundledEnv}
         })
 
         // 3. Processing engine — PyInstaller binary (api.exe on Windows, api on Linux)
