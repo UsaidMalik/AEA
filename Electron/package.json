@@ -99,26 +99,38 @@
       {
         "from": "../dahsboard/dist",
         "to": "dahsboard/dist"
-      },
-      {
-        "from": "resources/mongod/win/mongod.exe",
-        "to": "mongod/mongod.exe"
-      },
-      {
-        "from": "../processing-engine/dist/api.exe",
-        "to": "engine/api.exe"
       }
     ],
     "win": {
       "target": "nsis",
-      "icon": "../aea_logo.ico"
+      "icon": "../aea_logo.ico",
+      "extraResources": [
+        {
+          "from": "resources/mongod/win/mongod.exe",
+          "to": "mongod/mongod.exe"
+        },
+        {
+          "from": "../processing-engine/dist/api.exe",
+          "to": "engine/api.exe"
+        }
+      ]
     },
     "mac": {
       "target": "dmg",
       "icon": "../aea_logo.ico"
     },
     "linux": {
-      "target": "AppImage"
+      "target": "AppImage",
+      "extraResources": [
+        {
+          "from": "resources/mongod/linux/mongod",
+          "to": "mongod/mongod"
+        },
+        {
+          "from": "../processing-engine/dist/api",
+          "to": "engine/api"
+        }
+      ]
     }
   },
   "repository": {

@@ -18,20 +18,23 @@ function loadEnvFile(envPath) {
     })
 }
 
-// On first run, copy the bundled default.env → .env so services find it.
-// In dev mode, fall back to .env.example (existing behaviour).
+// Load env vars for the current run mode.
+// In packaged mode (Windows installer or Linux AppImage), load default.env directly
+// from the read-only resources bundle — we can't write to the AppImage squashfs mount.
+// In dev mode, load (or create) ROOT/.env as before.
 function ensureEnvFile() {
-    const envPath = path.join(ROOT, '.env')
-    if (!fs.existsSync(envPath)) {
-        const source = app.isPackaged
-            ? path.join(ROOT, 'default.env')   // bundled with real keys
-            : path.join(ROOT, '.env.example')   // dev fallback
-        if (fs.existsSync(source)) {
-            fs.copyFileSync(source, envPath)
-            console.log(`[AEA] Created .env from ${path.basename(source)}`)
+    const isPackaged = app.isPackaged || !!process.env.APPIMAGE
+    if (isPackaged) {
+        // Load bundled defaults directly — AppImage mount is read-only, can't write .env there
+        loadEnvFile(path.join(process.resourcesPath, 'default.env'))
+    } else {
+        const envPath = path.join(ROOT, '.env')
+        if (!fs.existsSync(envPath)) {
+            const source = path.join(ROOT, '.env.example')
+            if (fs.existsSync(source)) fs.copyFileSync(source, envPath)
         }
+        loadEnvFile(envPath)
     }
-    loadEnvFile(envPath)
 }
 ensureEnvFile()
 
@@ -42,6 +45,7 @@ function spawnService(cmd, args, opts = {}) {
         cwd: cwd || ROOT,
         env: {...process.env, ...(extraEnv || {})},
         stdio: 'inherit',
+        windowsHide: true,
         ...rest
     })
     proc.on('error', err => console.error(`[${cmd}] failed:`, err.message))
@@ -65,28 +69,30 @@ function waitForURL(url, retries = 60, delay = 1000) {
 }
 
 async function startBackend() {
-    if (app.isPackaged) {
-        // ── Production: use bundled binaries ──────────────────────────────
-        const ext = process.platform === 'win32' ? '.exe' : ''
+    // Detect packaged mode reliably: app.isPackaged can be false in AppImage builds
+    const resPath = process.resourcesPath
+    const isProduction = app.isPackaged || !!process.env.APPIMAGE
+    const dbPath = path.join(app.getPath('userData'), 'db')
 
-        // 1. MongoDB — bundled binary, data stored in user data dir for persistence
-        const mongodBin = path.join(process.resourcesPath, 'mongod', `mongod${ext}`)
-        const dbPath = path.join(app.getPath('userData'), 'db')
+    if (isProduction) {
         fs.mkdirSync(dbPath, {recursive: true})
+
+        // 1. MongoDB — bundled binary, extension differs by platform
+        const mongodExt = process.platform === 'win32' ? '.exe' : ''
+        const mongodBin = path.join(resPath, 'mongod', `mongod${mongodExt}`)
         spawnService(mongodBin, ['--dbpath', dbPath, '--port', '27017'])
 
         // 2. Node.js API server — reuse Electron's own Node via ELECTRON_RUN_AS_NODE
-        const serverPath = path.join(process.resourcesPath, 'api-server', 'server.js')
+        const serverPath = path.join(resPath, 'api-server', 'server.js')
         spawnService(process.execPath, [serverPath], {
-            cwd: path.join(process.resourcesPath, 'api-server'),
+            cwd: path.join(resPath, 'api-server'),
             env: {ELECTRON_RUN_AS_NODE: '1'}
         })
 
-        // 3. Python processing engine — PyInstaller binary
-        const engineBin = path.join(process.resourcesPath, 'engine', `api${ext}`)
-        spawnService(engineBin, [], {
-            cwd: path.join(process.resourcesPath, 'engine')
-        })
+        // 3. Processing engine — PyInstaller binary (api.exe on Windows, api on Linux)
+        const engineExt = process.platform === 'win32' ? '.exe' : ''
+        const engineBin = path.join(resPath, 'engine', `api${engineExt}`)
+        spawnService(engineBin, [], {cwd: path.join(resPath, 'engine')})
 
         // 4. Ollama (optional fallback LLM — start if installed, silently skip if not)
         spawnService('ollama', ['serve'])

@@ -273,7 +273,7 @@ if (require.main === module) {
             const clientPath = path.join(__dirname, '../dahsboard/dist')
             app.use(express.static(clientPath))
             //SPA fallback
-            app.get('*', (req,res) => {
+            app.get('/{*path}', (req,res) => {
                 res.sendFile(path.join(clientPath, 'index.html'))
             })
         }
