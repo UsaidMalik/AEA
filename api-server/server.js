@@ -3,7 +3,7 @@
 const express = require('express');
 const path = require('path');
 const { MongoClient, ObjectId } = require('mongodb');
-require('dotenv').config({path: path.join(__dirname, '../.env')});
+require('dotenv').config({path: process.env.DOTENV_CONFIG_PATH || path.join(__dirname, '../.env')});
 const { handleSmartQuery } = require('./tools/smart-query');
 const { indexResearchFiles, getStatus: getRagStatus } = require('./tools/rag');
 

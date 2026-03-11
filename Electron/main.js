@@ -86,7 +86,7 @@ async function startBackend() {
         const serverPath = path.join(resPath, 'api-server', 'server.js')
         spawnService(process.execPath, [serverPath], {
             cwd: path.join(resPath, 'api-server'),
-            env: {ELECTRON_RUN_AS_NODE: '1'}
+            env: {ELECTRON_RUN_AS_NODE: '1', DOTENV_CONFIG_PATH: path.join(resPath, 'default.env')}
         })
 
         // 3. Processing engine — PyInstaller binary (api.exe on Windows, api on Linux)
