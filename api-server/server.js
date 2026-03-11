@@ -7,8 +7,8 @@ require('dotenv').config({path: process.env.DOTENV_CONFIG_PATH || path.join(__di
 const { handleSmartQuery } = require('./tools/smart-query');
 const { indexResearchFiles, getStatus: getRagStatus } = require('./tools/rag');
 
-const uri = process.env.DATABASE_URI;
-const dbName = process.env.DATABASE_NAME;
+const uri = process.env.DATABASE_URI || 'mongodb://localhost:27017';
+const dbName = process.env.DATABASE_NAME || 'aea_local';
 
 // Session control — proxy to Flask (port 12040)
 const FLASK_URL = process.env.FLASK_URL || 'http://localhost:12040';
