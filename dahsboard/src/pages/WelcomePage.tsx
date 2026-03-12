@@ -39,7 +39,7 @@ const WelcomePage = () => {
                 WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
                 mb: 1,
             }}>
-                AEA Platform
+                AEA
             </Typography>
 
             <Typography variant="body1" color="text.secondary" mb={5} textAlign="center">

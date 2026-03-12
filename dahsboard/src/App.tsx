@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-
 import { AppBar, Toolbar, Typography, Button, Box, Chip, Avatar, Alert } from '@mui/material'
 import { Home, Settings, BarChart, Person, FiberManualRecord, Folder } from '@mui/icons-material'
 import { useUser } from './context/UserContext'
+import SplashScreen from './components/SplashScreen'
 import WelcomePage from './pages/WelcomePage'
 import ActionPage from './pages/ActionPage'
 import ConfigPage from './pages/ConfigPage'
@@ -22,6 +23,7 @@ const App = () => {
     const location = useLocation()
     const navigate = useNavigate()
     const isWelcome = location.pathname === '/'
+    const [splash, setSplash] = useState(true)
     const [sessionActive, setSessionActive] = useState(false)
     const [missingXdotool, setMissingXdotool] = useState(false)
 
@@ -45,6 +47,8 @@ const App = () => {
             .catch(() => {})
     }, [])
 
+    if (splash) return <SplashScreen onDone={() => setSplash(false)} />
+
     if (!userName && !isWelcome) {
         return <Navigate to="/" />
     }
@@ -61,7 +65,7 @@ const App = () => {
                         <Typography variant="h6" fontWeight={700} sx={{
                             cursor: 'pointer', color: '#2563eb',
                         }} onClick={() => navigate('/action')}>
-                            AEA Platform
+                            AEA
                         </Typography>
 
                         <Box sx={{ ml: 4, display: 'flex', gap: 0.5 }}>
