@@ -202,9 +202,9 @@ jobs:
 # Create GitHub Release
 # ============================================================================
   release: 
-    neme: Publish GitHub Release 
+    name: Publish GitHub Release 
     needs: [build-windows, build-linux]
-    runs-on: ubuntu latest
+    runs-on: ubuntu-latest
 
     permissions: 
       contents: write
@@ -227,6 +227,6 @@ jobs:
         with:
           files: dist/*
           generate_release_notes: true
-          
+
  
 
