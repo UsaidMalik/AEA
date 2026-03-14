@@ -1,0 +1,232 @@
+name: Build & Release AEA
+on: 
+  push:
+    tags: 
+      - 'v*.*.*' #Triggers on tags
+  
+jobs:
+  build-windows: 
+    name: Build Windows Installer
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4 
+
+    # Install Node.js - needed to build the React dashboard and run electron builder
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+    
+    # Install Python - needed to run Pyinstalller and build the processing engine
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with: 
+          python-version: '3.11'
+
+      - name: Write default.env
+        shell: bash 
+        run: | 
+          cat > default.env << 'EOF'
+          DATABASE_URI=mongodb://localhost:27017
+          DATABASE_NAME=aea_local
+          GROQ_API_KEY=${{secrets.GROQ_API_KEY}}
+          GROQ_MODEL=llama-3.1-8b-instant
+          OLLAMA_URL=http://localhost:11434
+          OLLAMA_MODEL=qwen2.5:latest
+          OLLAMA_EMBED_MODEL=nomic-embed-text
+          OLLAMA_TIMEOUT_MS=60000
+          EOF
+    
+    # Build the React Frontend
+      - name: Build React dashboard
+        working-directory: dahsboard
+        run: |
+          npm ci
+          npm run build
+      
+    # Pyinstaller bundles api.py + all its Python libs
+      - name: Build Python engine (PyInstaller)
+        working-directory: processing-engine
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+          python -m Pyintsaller api.spec --noconfirm
+
+    # The app ships with its own MongoDB server so users don't install it. 
+      - name: Download mongod for Windows
+        shell: bash
+        run: |
+          MONGOD_VERSION="8.0.5"
+          DEST="Electron/resources/mongod/win/mongod.exe"
+          URL="https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-${MONGOD_VERSION}.zip"
+          mkdir -p "$(dirname "$DEST")"
+          TMP=$(mktemp -d)
+          curl -L --progress-bar "$URL" -o "$TMP/archive.zip"
+          unzip -q "$TMP/archive.zip" -d "$TMP/out"
+          BIN=$(find "$TMP/out" -name "mongod.exe" | head -1)
+          cp "$BIN" "$DEST"
+          rm -rf "$TMP"
+
+    # Install electron-builder and its dependencies
+      - name: Install Electron dependencies
+        working-directory: Electron
+        run: npm ci
+    
+    # Electron builder downloads a tool called winCodeSign to stamp the installer
+      - name: Pre-cache winCodeSign (fixes Windows symlink error)
+        shell: bash
+        working-directory: Electron
+        run: | 
+          WCS_VER="winCodeSign-2.6.0"
+          WCS_CACHE_UNIX="$(cygpath "$LOCALAPPDATA")/electron-builder/Cache/winCodeSign/$WCS_VER"
+          if [ ! -f "$WCS_CACHE_UNIX/rcedit-x64.exe"]; then
+            mkdir -p '$WCS'
+            WCS_TMP=$(mktemp -d)
+             curl -sL \
+              "https://github.com/electron-userland/electron-builder-binaries/releases/download/$WCS_VER/$WCS_VER.7z" \
+              -o "$WCS_TMP/wcs.7z"
+            WCS_CACHE_WIN="$(cygpath -w "$WCS_CACHE_UNIX")"
+            node_modules/7zip-bin/win/x64/7za.exe x \
+              "$(cygpath -w "$WCS_TMP/wcs.7z")" \
+              "-o$WCS_CACHE_WIN" -bd -y "-xr!darwin"
+            rm -rf "$WCS_TMP"
+          fi
+    # electron-builder reads Electron/package.json "build" section and bundles everything:
+    
+      - name: Package Electron app for Windows
+        working-directory: Electron
+        env: 
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npm run dist
+
+    # Save the .exe as a temporary "artifact" - the release job will pick it up
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with: 
+          name: windows-installer
+          path: Electron/dist/*.exe
+
+# ============================================================================
+# Build Linux
+# ============================================================================
+  build-linux:
+    name: Build Linux AppImage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # Same default.env creation as Windows — same secret, different machine
+      - name: Write default.env
+        run: |
+          cat > default.env << 'EOF'
+          DATABASE_URI=mongodb://localhost:27017
+          DATABASE_NAME=aea_local
+          GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
+          GROQ_MODEL=llama-3.1-8b-instant
+          OLLAMA_URL=http://localhost:11434
+          OLLAMA_MODEL=qwen2.5:latest
+          OLLAMA_EMBED_MODEL=nomic-embed-text
+          OLLAMA_TIMEOUT_MS=60000
+          EOF
+
+      # FUSE is a Linux filesystem driver required to build and mount AppImage files
+      - name: Install AppImage build dependencies
+        run: sudo apt-get install -y fuse libfuse2
+
+      - name: Build React dashboard
+        working-directory: dahsboard
+        run: |
+          npm ci
+          npm run build
+
+      # On Linux, PyInstaller outputs a binary with no extension: processing-engine/dist/api
+      - name: Build Python engine (PyInstaller)
+        working-directory: processing-engine
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+          python3 -m PyInstaller api.spec --noconfirm
+
+      # Same concept as Windows mongod, but for Linux.
+      # Auto-detects Ubuntu version (22.04 vs 24.04) to download the right build.
+      - name: Download mongod for Linux
+        run: |
+          MONGOD_VERSION="8.0.5"
+          DEST="Electron/resources/mongod/linux/mongod"
+          DISTRO=$(lsb_release -rs | cut -d. -f1)
+          [[ "$DISTRO" -ge 24 ]] && DNAME="ubuntu2404" || DNAME="ubuntu2204"
+          URL="https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-${DNAME}-${MONGOD_VERSION}.tgz"
+          mkdir -p "$(dirname "$DEST")"
+          TMP=$(mktemp -d)
+          curl -L "$URL" -o "$TMP/archive.tgz"
+          mkdir -p "$TMP/out"
+          tar -xzf "$TMP/archive.tgz" -C "$TMP/out" --strip-components=2
+          BIN=$(find "$TMP/out" -name "mongod" -not -name "*.exe" | head -1)
+          cp "$BIN" "$DEST" && chmod +x "$DEST"
+          rm -rf "$TMP"
+
+      - name: Install Electron dependencies
+        working-directory: Electron
+        run: npm ci
+
+      # Produces a single portable file: Electron/dist/AEA-1.0.0.AppImage
+      # Users just chmod +x it and run it — no installation needed
+      - name: Package Electron app for Linux
+        working-directory: Electron
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npm run dist
+
+      - name: Upload Linux AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimage
+          path: Electron/dist/*.AppImage
+        
+    
+# ============================================================================
+# Create GitHub Release
+# ============================================================================
+  release: 
+    neme: Publish GitHub Release 
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu latest
+
+    permissions: 
+      contents: write
+    
+    steps:
+      - name: Download Windows installer
+        uses: actions/download-artifact@v4
+        with: 
+          name: windows-installer
+          path: dist/
+    
+      - name: Download Linux AppImage
+        uses: actions/download-artifact@v4
+        with: 
+          name: linux-appimage
+          path: dist/
+      
+      - name: Create Github Release and upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          
+ 
+
