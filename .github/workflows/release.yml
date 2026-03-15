@@ -228,5 +228,37 @@ jobs:
           files: dist/*
           generate_release_notes: true
 
+      - name: Update downloads.json in aea-downloads
+        env:
+          GH_TOKEN: ${{ secrets.DOWNLOAD_REPO_TOKEN }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          REPO="UsaidMalik/aea-downloads"
+          BASE="https://github.com/${{ github.repository }}/releases/download/${TAG}"
+
+          JSON=$(printf '{\n  "version": "%s",\n  "date": "%s",\n  "windows": "%s",\n  "linux": "%s"\n}' \
+            "$TAG" \
+            "$(date -u +%Y-%m-%d)" \
+            "${BASE}/AEA-Setup-${TAG#v}.exe" \
+            "${BASE}/AEA-${TAG#v}.AppImage")
+
+          SHA=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/${REPO}/contents/downloads.json" \
+            | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('sha',''))" 2>/dev/null || echo "")
+
+          CONTENT=$(echo "$JSON" | base64 -w 0)
+
+          if [ -n "$SHA" ]; then
+            BODY="{\"message\":\"release ${TAG}\",\"content\":\"${CONTENT}\",\"sha\":\"${SHA}\"}"
+          else
+            BODY="{\"message\":\"release ${TAG}\",\"content\":\"${CONTENT}\"}"
+          fi
+
+          curl -s -X PUT \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$BODY" \
+            "https://api.github.com/repos/${REPO}/contents/downloads.json"
+
  
 
