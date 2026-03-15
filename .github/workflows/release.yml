@@ -233,7 +233,7 @@ jobs:
           GH_TOKEN: ${{ secrets.DOWNLOAD_REPO_TOKEN }}
         run: |
           TAG="${{ github.ref_name }}"
-          REPO="UsaidMalik/aea-downloads"
+          REPO="raw9846/aea-downloads"
           BASE="https://github.com/${{ github.repository }}/releases/download/${TAG}"
 
           JSON=$(printf '{\n  "version": "%s",\n  "date": "%s",\n  "windows": "%s",\n  "linux": "%s"\n}' \
