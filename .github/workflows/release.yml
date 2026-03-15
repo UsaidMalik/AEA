@@ -52,7 +52,7 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install pyinstaller
-          python -m PyIntsaller api.spec --noconfirm
+          python -m PyInstaller api.spec --noconfirm
 
     # The app ships with its own MongoDB server so users don't install it. 
       - name: Download mongod for Windows
