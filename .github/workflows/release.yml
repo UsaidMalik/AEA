@@ -197,13 +197,92 @@ jobs:
           name: linux-appimage
           path: Electron/dist/*.AppImage
         
-    
+# ============================================================================
+# Build macOS
+# ============================================================================
+  build-mac:
+    name: Build macOS DMG
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Write default.env
+        run: |
+          cat > default.env << 'EOF'
+          DATABASE_URI=mongodb://localhost:27017
+          DATABASE_NAME=aea_local
+          GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
+          GROQ_MODEL=llama-3.1-8b-instant
+          OLLAMA_URL=http://localhost:11434
+          OLLAMA_MODEL=qwen2.5:latest
+          OLLAMA_EMBED_MODEL=nomic-embed-text
+          OLLAMA_TIMEOUT_MS=60000
+          EOF
+
+      - name: Build React dashboard
+        working-directory: dahsboard
+        run: |
+          npm ci
+          npm run build
+
+      # PyInstaller output on macOS has no extension: processing-engine/dist/api
+      - name: Build Python engine (PyInstaller)
+        working-directory: processing-engine
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+          python3 -m PyInstaller api.spec --noconfirm
+
+      # arm64 = Apple Silicon; macos-latest runner is arm64
+      - name: Download mongod for macOS
+        run: |
+          MONGOD_VERSION="8.0.5"
+          DEST="Electron/resources/mongod/mac/mongod"
+          URL="https://fastdl.mongodb.org/osx/mongodb-macos-arm64-${MONGOD_VERSION}.tgz"
+          mkdir -p "$(dirname "$DEST")"
+          TMP=$(mktemp -d)
+          curl -L "$URL" -o "$TMP/archive.tgz"
+          mkdir -p "$TMP/out"
+          tar -xzf "$TMP/archive.tgz" -C "$TMP/out" --strip-components=2
+          BIN=$(find "$TMP/out" -name "mongod" | head -1)
+          cp "$BIN" "$DEST" && chmod +x "$DEST"
+          rm -rf "$TMP"
+
+      - name: Install Electron dependencies
+        working-directory: Electron
+        run: npm ci
+
+      # Produces: Electron/dist/AEA-1.0.0-arm64.dmg
+      - name: Package Electron app for macOS
+        working-directory: Electron
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npm run dist
+
+      - name: Upload macOS DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-dmg
+          path: Electron/dist/*.dmg
+
 # ============================================================================
 # Create GitHub Release
 # ============================================================================
   release: 
     name: Publish GitHub Release 
-    needs: [build-windows, build-linux]
+    needs: [build-windows, build-linux, build-mac]
     runs-on: ubuntu-latest
 
     permissions: 
@@ -218,10 +297,16 @@ jobs:
     
       - name: Download Linux AppImage
         uses: actions/download-artifact@v4
-        with: 
+        with:
           name: linux-appimage
           path: dist/
-      
+
+      - name: Download macOS DMG
+        uses: actions/download-artifact@v4
+        with:
+          name: mac-dmg
+          path: dist/
+
       - name: Create Github Release and upload assets
         uses: softprops/action-gh-release@v2
         with:
@@ -242,9 +327,10 @@ jobs:
 
           WIN_URL=$(echo "$RELEASE" | jq -r '.assets[] | select(.name | endswith(".exe")) | .browser_download_url' | head -1)
           LINUX_URL=$(echo "$RELEASE" | jq -r '.assets[] | select(.name | endswith(".AppImage")) | .browser_download_url' | head -1)
+          MAC_URL=$(echo "$RELEASE" | jq -r '.assets[] | select(.name | endswith(".dmg")) | .browser_download_url' | head -1)
 
-          JSON=$(printf '{\n  "version": "%s",\n  "date": "%s",\n  "windows": "%s",\n  "linux": "%s"\n}' \
-            "$TAG" "$(date -u +%Y-%m-%d)" "$WIN_URL" "$LINUX_URL")
+          JSON=$(printf '{\n  "version": "%s",\n  "date": "%s",\n  "windows": "%s",\n  "linux": "%s",\n  "mac": "%s"\n}' \
+            "$TAG" "$(date -u +%Y-%m-%d)" "$WIN_URL" "$LINUX_URL" "$MAC_URL")
 
           SHA=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
             "https://api.github.com/repos/${REPO}/contents/downloads.json" \
