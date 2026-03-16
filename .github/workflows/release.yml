@@ -231,16 +231,20 @@ jobs:
       - name: Update downloads.json in aea-downloads
         env:
           GH_TOKEN: ${{ secrets.DOWNLOAD_REPO_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ github.ref_name }}"
           REPO="raw9846/aea-downloads"
-          BASE="https://github.com/${{ github.repository }}/releases/download/${TAG}"
+
+          # Get actual asset URLs from the release (avoids hardcoding filenames)
+          RELEASE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/${TAG}")
+
+          WIN_URL=$(echo "$RELEASE" | jq -r '.assets[] | select(.name | endswith(".exe")) | .browser_download_url' | head -1)
+          LINUX_URL=$(echo "$RELEASE" | jq -r '.assets[] | select(.name | endswith(".AppImage")) | .browser_download_url' | head -1)
 
           JSON=$(printf '{\n  "version": "%s",\n  "date": "%s",\n  "windows": "%s",\n  "linux": "%s"\n}' \
-            "$TAG" \
-            "$(date -u +%Y-%m-%d)" \
-            "${BASE}/AEA-Setup-${TAG#v}.exe" \
-            "${BASE}/AEA-${TAG#v}.AppImage")
+            "$TAG" "$(date -u +%Y-%m-%d)" "$WIN_URL" "$LINUX_URL")
 
           SHA=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
             "https://api.github.com/repos/${REPO}/contents/downloads.json" \
