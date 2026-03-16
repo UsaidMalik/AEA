@@ -68,6 +68,25 @@ function waitForURL(url, retries = 60, delay = 1000) {
     })
 }
 
+// Kill any leftover processes from a previous crashed instance.
+// Safe in packaged mode — these ports are exclusively ours.
+function freePorts(ports) {
+    const { execSync } = require('child_process')
+    for (const port of ports) {
+        try {
+            if (process.platform === 'win32') {
+                const out = execSync(`netstat -ano | findstr :${port}`, { encoding: 'utf8' })
+                const pids = [...new Set(out.trim().split('\n')
+                    .map(l => l.trim().split(/\s+/).pop())
+                    .filter(p => /^\d+$/.test(p) && p !== '0'))]
+                pids.forEach(pid => { try { execSync(`taskkill /PID ${pid} /F`) } catch (_) {} })
+            } else {
+                execSync(`lsof -ti :${port} | xargs kill -9 2>/dev/null || true`, { shell: true })
+            }
+        } catch (_) {}
+    }
+}
+
 async function startBackend() {
     // Detect packaged mode reliably: app.isPackaged can be false in AppImage builds
     const resPath = process.resourcesPath
@@ -76,6 +95,7 @@ async function startBackend() {
 
     if (isProduction) {
         fs.mkdirSync(dbPath, {recursive: true})
+        freePorts([27017, 12039])
 
         // 1. MongoDB — bundled binary, extension differs by platform
         const mongodExt = process.platform === 'win32' ? '.exe' : ''

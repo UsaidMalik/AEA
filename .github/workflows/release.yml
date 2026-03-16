@@ -69,11 +69,16 @@ jobs:
           cp "$BIN" "$DEST"
           rm -rf "$TMP"
 
+    # api-server/node_modules must exist before electron-builder bundles extraResources
+      - name: Install API server dependencies
+        working-directory: api-server
+        run: npm ci --omit=dev
+
     # Install electron-builder and its dependencies
       - name: Install Electron dependencies
         working-directory: Electron
         run: npm ci
-    
+
     # Electron builder downloads a tool called winCodeSign to stamp the installer
       - name: Pre-cache winCodeSign (fixes Windows symlink error)
         shell: bash
@@ -179,6 +184,11 @@ jobs:
           cp "$BIN" "$DEST" && chmod +x "$DEST"
           rm -rf "$TMP"
 
+      # api-server/node_modules must exist before electron-builder bundles extraResources
+      - name: Install API server dependencies
+        working-directory: api-server
+        run: npm ci --omit=dev
+
       - name: Install Electron dependencies
         working-directory: Electron
         run: npm ci
@@ -259,6 +269,11 @@ jobs:
           BIN=$(find "$TMP/out" -name "mongod" | head -1)
           cp "$BIN" "$DEST" && chmod +x "$DEST"
           rm -rf "$TMP"
+
+      # api-server/node_modules must exist before electron-builder bundles extraResources
+      - name: Install API server dependencies
+        working-directory: api-server
+        run: npm ci --omit=dev
 
       - name: Install Electron dependencies
         working-directory: Electron
