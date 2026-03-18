@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 
 interface UserContextType {
   userName: string | null;
@@ -8,17 +8,24 @@ interface UserContextType {
 const UserContext = createContext<UserContextType>({ userName: null, setUserName: () => {} });
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
-  const [userName, setUserNameState] = useState<string | null>(
-    () => localStorage.getItem('aea_user_name')
-  );
+  const [userName, setUserNameState] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/user')
+      .then(r => r.json())
+      .then(data => { if (data.name) setUserNameState(data.name); })
+      .catch(() => {});
+  }, []);
 
   const setUserName = (name: string | null) => {
-    if (name) {
-      localStorage.setItem('aea_user_name', name);
-    } else {
-      localStorage.removeItem('aea_user_name');
-    }
     setUserNameState(name);
+    if (name) {
+      fetch('/api/user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      }).catch(() => {});
+    }
   };
 
   return (

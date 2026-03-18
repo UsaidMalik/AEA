@@ -259,6 +259,26 @@ function createApp(db) {
         }
     });
 
+    // GET /api/user — fetch stored user profile
+    app.get('/api/user', async (req, res) => {
+        const doc = await db.collection('user_profile').findOne({});
+        res.json({ name: doc ? doc.name : null });
+    });
+
+    // POST /api/user — save user name (upsert single document)
+    app.post('/api/user', async (req, res) => {
+        const { name } = req.body;
+        if (!name || !name.trim()) {
+            return res.status(400).json({ success: false, error: 'Missing name' });
+        }
+        await db.collection('user_profile').updateOne(
+            {},
+            { $set: { name: name.trim() } },
+            { upsert: true }
+        );
+        res.json({ success: true, name: name.trim() });
+    });
+
     // GET /api/capabilities — system capability detection (Linux xdotool check)
     app.get('/api/capabilities', (req, res) => {
         const { execSync } = require('child_process');
