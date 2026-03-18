@@ -47,11 +47,13 @@ class SessionManager:
         )
         self.website_engine = WebsiteEngine(
             action_config=action_config,
-            session_id=self.session_id
+            session_id=self.session_id,
+            config_name=self.config.get("name", "")
         )
         self.app_engine = AppEngine(
             action_config=action_config,
-            session_id=self.session_id
+            session_id=self.session_id,
+            config_name=self.config.get("name", "")
         )
 
         # Start all engines (threaded)

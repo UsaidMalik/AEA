@@ -66,7 +66,7 @@ fi
 
 # ── Processing Engine ─────────────────────────────────
 cd "$ROOT/processing-engine"
-"$PYTHON" api.py > "$LOGS/engine.log" 2>&1 &
+PYTHONUNBUFFERED=1 "$PYTHON" -u api.py > "$LOGS/engine.log" 2>&1 &
 ENGINE_PID=$!
 echo "[AEA] Processing Engine   PID=$ENGINE_PID  →  http://localhost:12040"
 

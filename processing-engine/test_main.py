@@ -70,6 +70,12 @@ def test_start_session_success(mock_alerter, mock_db_writer, mock_app_engine, mo
     mock_website_engine.return_value.start_detection.assert_called_once()
     mock_app_engine.return_value.start_detection.assert_called_once()
 
+    # config_name must be forwarded to both engines
+    _, web_kwargs = mock_website_engine.call_args
+    assert web_kwargs.get("config_name") == "test_config"
+    _, app_kwargs = mock_app_engine.call_args
+    assert app_kwargs.get("config_name") == "test_config"
+
 
 # ---- stop_session tests ----
 

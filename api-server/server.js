@@ -21,6 +21,69 @@ function createApp(db) {
     const cors = require('cors');
     app.use(cors());
 
+
+    // Blocked page — shown when a site or app is blocked in strict mode
+    app.get('/blocked', (req, res) => {
+        const site = req.query.site || ''
+        const appName = req.query.app || ''
+        const config = req.query.config || 'your active session'
+        const isApp = !!appName
+        const label = isApp ? appName : site
+        const heading = isApp ? 'App Blocked' : 'Website Blocked'
+        const message = isApp
+            ? 'This app is not allowed during your current session.'
+            : 'This website is not allowed during your current session.'
+        res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blocked – AEA</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      background: #0f0f11;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: #e5e5e5;
+    }
+    .card {
+      background: #1a1a1f;
+      border: 1px solid #2a2a32;
+      border-radius: 16px;
+      padding: 48px 56px;
+      max-width: 480px;
+      text-align: center;
+    }
+    .icon { font-size: 48px; margin-bottom: 20px; }
+    h1 { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+    .label { color: #f87171; font-size: 18px; font-weight: 500; margin: 16px 0; }
+    p { color: #9ca3af; font-size: 14px; line-height: 1.6; }
+    .config-badge {
+      display: inline-block;
+      background: #252530;
+      border: 1px solid #3a3a46;
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 13px;
+      color: #a78bfa;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">🚫</div>
+    <h1>${heading}</h1>
+    <div class="label">${label}</div>
+    <p>${message}</p>
+    <div class="config-badge">Config: ${config}</div>
+  </div>
+</body>
+</html>`)
+    })
+
     //API endpoint to get camera events with pagination
     app.get('/api/camera-events', async (req, res) => {
        const page =parseInt(req.query.page) || 1;

@@ -164,3 +164,69 @@ def test_stop_detection_not_running(mock_alerter, mock_db_writer):
     # Not running by default
     result = engine.stop_detection()
     assert result is False
+
+
+@patch("Engines.app_engine.DBWriter")
+@patch("Engines.app_engine.Alerter")
+def test_flush_current_app_strict_mode(mock_alerter, mock_db_writer):
+    """In strict mode, a violation should be recorded as 'blocked', not 'notified'."""
+    mock_db_writer_instance = MagicMock()
+    mock_db_writer.return_value = mock_db_writer_instance
+    config = {"apps": {"deny": ["discord"], "allow": []}, "enforcement_level": "strict"}
+
+    engine = AppEngine(action_config=config)
+    engine.current_app = "discord"
+    engine.current_window_title = "Discord - #general"
+    engine.current_app_ts_open = datetime.datetime(2024, 1, 1, 12, 0, 0)
+    engine.current_app_policy = {"allowed": False, "rule": "app_deny"}
+
+    engine._flush_current_app()
+
+    _, kwargs = mock_db_writer_instance.write_entry.call_args
+    assert kwargs["data"]["action_taken"] == "blocked"
+
+
+@patch("Engines.app_engine.psutil")
+@patch("Engines.app_engine.DBWriter")
+@patch("Engines.app_engine.Alerter")
+def test_kill_app(mock_alerter, mock_db_writer, mock_psutil):
+    """_kill_app kills matching processes and ignores AccessDenied."""
+    config = {"apps": {"deny": ["discord"], "allow": []}}
+    engine = AppEngine(action_config=config)
+
+    mock_proc_match = MagicMock()
+    mock_proc_match.info = {"name": "Discord.exe"}
+
+    mock_proc_no_match = MagicMock()
+    mock_proc_no_match.info = {"name": "chrome.exe"}
+
+    mock_proc_denied = MagicMock()
+    mock_proc_denied.info = {"name": "discord.exe"}
+    mock_proc_denied.kill.side_effect = mock_psutil.AccessDenied(pid=99)
+
+    mock_psutil.process_iter.return_value = [mock_proc_match, mock_proc_no_match, mock_proc_denied]
+    mock_psutil.NoSuchProcess = Exception
+    mock_psutil.AccessDenied = Exception
+
+    engine._kill_app("Discord.exe")
+
+    mock_proc_match.kill.assert_called_once()
+    mock_proc_no_match.kill.assert_not_called()
+
+
+@patch("Engines.app_engine.webbrowser")
+@patch("Engines.app_engine.DBWriter")
+@patch("Engines.app_engine.Alerter")
+def test_block_app(mock_alerter, mock_db_writer, mock_webbrowser):
+    """_block_app calls _kill_app and opens the blocked page with correct URL."""
+    config = {"apps": {"deny": ["discord"], "allow": []}, "enforcement_level": "strict"}
+    engine = AppEngine(action_config=config, config_name="Study Mode")
+    engine._kill_app = MagicMock()
+
+    engine._block_app("discord")
+
+    engine._kill_app.assert_called_once_with("discord")
+    call_url = mock_webbrowser.open.call_args[0][0]
+    assert "app=discord" in call_url
+    assert "config=Study+Mode" in call_url or "config=Study%20Mode" in call_url
+    assert call_url.startswith("http://localhost:12039/blocked")

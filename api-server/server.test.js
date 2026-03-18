@@ -432,6 +432,47 @@ describe('Session proxy endpoints', () => {
 // Capabilities
 // ============================================================================
 
+// ============================================================================
+// Blocked page
+// ============================================================================
+
+describe('GET /blocked', () => {
+    test('returns 200 HTML for a blocked website', async () => {
+        const db = mockDb();
+        const app = createApp(db);
+
+        const res = await request(app).get('/blocked?site=youtube.com&config=Study+Mode');
+
+        expect(res.status).toBe(200);
+        expect(res.headers['content-type']).toMatch(/html/);
+        expect(res.text).toContain('youtube.com');
+        expect(res.text).toContain('Website Blocked');
+        expect(res.text).toContain('Study Mode');
+    });
+
+    test('returns 200 HTML for a blocked app', async () => {
+        const db = mockDb();
+        const app = createApp(db);
+
+        const res = await request(app).get('/blocked?app=discord&config=Work');
+
+        expect(res.status).toBe(200);
+        expect(res.text).toContain('discord');
+        expect(res.text).toContain('App Blocked');
+        expect(res.text).toContain('Work');
+    });
+
+    test('returns 200 HTML with fallback text when no params given', async () => {
+        const db = mockDb();
+        const app = createApp(db);
+
+        const res = await request(app).get('/blocked');
+
+        expect(res.status).toBe(200);
+        expect(res.text).toContain('your active session');
+    });
+});
+
 describe('GET /api/capabilities', () => {
     test('returns 200 with platform field', async () => {
         const db = mockDb();

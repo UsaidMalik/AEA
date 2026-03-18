@@ -9,27 +9,36 @@ import threading
 import time
 import logging
 import datetime
+import webbrowser
+import urllib.parse
 from DBWriter.DBWriter import DBWriter
 from Alerter.alerter import Alerter
 import platform
 import subprocess
 
-# Windows-specific for getting active window
 PLATFORM = platform.system()
+
+try:
+    import psutil
+except ImportError:
+    psutil = None
+
+# Windows-specific for getting active window
 if PLATFORM == "Windows":
     try:
         import win32gui
         import win32process
-        import psutil
     except ImportError:
-        win32gui = win32process = psutil = None
+        win32gui = win32process = None
 
 
 class AppEngine:
-    def __init__(self, action_config, session_id=None, poll_interval=2):
+    def __init__(self, action_config, session_id=None, poll_interval=2, config_name=""):
         self.session_id = session_id
         self.action_config = action_config
         self.poll_interval = poll_interval
+        self.config_name = config_name
+        self.strict = action_config.get("enforcement_level", "lenient") == "strict"
 
         # Banned/allowed apps from config (nested structure)
         apps_policy = action_config.get("apps", {})
@@ -52,6 +61,7 @@ class AppEngine:
         # Logging
         logging.basicConfig(level=logging.DEBUG)
         self.logger = logging.getLogger(__name__)
+        print(f"[AppEngine] Strict mode: {self.strict} (enforcement_level={action_config.get('enforcement_level', 'lenient')})", flush=True)
 
     def start_detection(self):
         """Start the app monitoring process in a separate thread"""
@@ -165,6 +175,32 @@ class AppEngine:
         # App not in either list — allowed by default
         return {"allowed": True, "rule": "app_unlisted"}
 
+    def _kill_app(self, process_name):
+        """Kill all running processes matching the blocked app name."""
+        if not psutil:
+            print("[AppEngine] psutil not available — cannot kill processes", flush=True)
+            return
+        target = self._normalize_app_name(process_name)
+        print(f"[AppEngine] Attempting to kill: {target}", flush=True)
+        killed = 0
+        for proc in psutil.process_iter(['name']):
+            try:
+                if self._normalize_app_name(proc.info['name']) == target:
+                    proc.kill()
+                    killed += 1
+            except psutil.AccessDenied:
+                print(f"[AppEngine] Access denied killing {proc.info['name']}", flush=True)
+            except psutil.NoSuchProcess:
+                pass
+        print(f"[AppEngine] Killed {killed} process(es) matching '{target}'", flush=True)
+
+    def _block_app(self, process_name):
+        """Kill the app and open the blocked page in the browser."""
+        print(f"[AppEngine] Blocking app: {process_name}", flush=True)
+        self._kill_app(process_name)
+        params = urllib.parse.urlencode({"app": process_name, "config": self.config_name})
+        webbrowser.open(f"http://localhost:12039/blocked?{params}")
+
     def _flush_current_app(self):
         """Write the currently tracked app to MongoDB and reset state."""
         if self.current_app is None:
@@ -182,7 +218,7 @@ class AppEngine:
                 "app_name": self.current_app,
                 "window_title": self.current_window_title,
                 "policy": self.current_app_policy,
-                "action_taken": "notified" if is_violation else "ignored",
+                "action_taken": ("blocked" if self.strict else "notified") if is_violation else "ignored",
                 "notification": {
                     "sent": is_violation,
                     "ts": ts_close if is_violation else None
@@ -225,6 +261,8 @@ class AppEngine:
                             f"in window '{window_title}'"
                         )
                         self.alerter.alert("Blocked App Detected", f"{process_name} is not allowed")
+                        if self.strict:
+                            self._block_app(process_name)
                 else:
                     # Same app still in foreground — update window title in case it changed
                     self.current_window_title = window_title

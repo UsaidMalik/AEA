@@ -161,3 +161,45 @@ def test_stop_detection_not_running(mock_alerter, mock_db_writer):
 
     result = engine.stop_detection()
     assert result is False
+
+
+@patch("Engines.website_engine.DBWriter")
+@patch("Engines.website_engine.Alerter")
+def test_flush_current_site_strict_mode(mock_alerter, mock_db_writer):
+    """In strict mode, a violation should be recorded as 'blocked', not 'notified'."""
+    mock_db_writer_instance = MagicMock()
+    mock_db_writer.return_value = mock_db_writer_instance
+    config = {"web": {"deny": ["youtube.com"], "allow": []}, "enforcement_level": "strict"}
+
+    engine = WebsiteEngine(action_config=config)
+    engine.current_domain = "youtube.com"
+    engine.current_window_title = "YouTube - Chrome"
+    engine.current_site_ts_open = datetime.datetime(2024, 1, 1, 12, 0, 0)
+    engine.current_site_policy = {"allowed": False, "rule": "web_deny"}
+
+    engine._flush_current_site()
+
+    _, kwargs = mock_db_writer_instance.write_entry.call_args
+    assert kwargs["data"]["action_taken"] == "blocked"
+
+
+@patch("Engines.website_engine.PLATFORM", "Darwin")
+@patch("Engines.website_engine.webbrowser")
+@patch("Engines.website_engine.subprocess")
+@patch("Engines.website_engine.DBWriter")
+@patch("Engines.website_engine.Alerter")
+def test_block_website(mock_alerter, mock_db_writer, mock_subprocess, mock_webbrowser):
+    """_block_website sends the close-tab shortcut and opens the blocked page."""
+    config = {"web": {"deny": ["youtube.com"], "allow": []}, "enforcement_level": "strict"}
+    engine = WebsiteEngine(action_config=config, config_name="Study Mode")
+
+    engine._block_website("youtube.com")
+
+    # Tab-close shortcut sent via osascript (PLATFORM patched to Darwin)
+    mock_subprocess.run.assert_called_once()
+
+    # Blocked page opened with correct params
+    call_url = mock_webbrowser.open.call_args[0][0]
+    assert "site=youtube.com" in call_url
+    assert "config=Study+Mode" in call_url or "config=Study%20Mode" in call_url
+    assert call_url.startswith("http://localhost:12039/blocked")

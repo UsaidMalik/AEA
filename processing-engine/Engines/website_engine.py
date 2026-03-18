@@ -12,6 +12,7 @@ from DBWriter.DBWriter import DBWriter
 from Alerter.alerter import Alerter
 import platform
 import subprocess
+import webbrowser
 
 #Windows-specific for getting active window/url
 PLATFORM = platform.system()
@@ -24,15 +25,17 @@ if PLATFORM == "Windows":
         win32gui = win32process = psutil = None
 
 class WebsiteEngine:
-    def __init__(self, action_config, session_id=None, poll_interval=2):
+    def __init__(self, action_config, session_id=None, poll_interval=2, config_name = ""):
         self.session_id = session_id
         self.action_config = action_config
         self.poll_interval = poll_interval
+        self.config_name = config_name
 
         # Web policy from config (nested structure)
         web_policy = action_config.get("web", {})
         self.banned_websites = web_policy.get("deny", [])
         self.allowed_websites = web_policy.get("allow", [])
+        self.strict = action_config.get("enforcement_level", "lenient") == "strict"
 
         #Runtime state
         self.is_running = False
@@ -50,6 +53,7 @@ class WebsiteEngine:
         #Logging
         logging.basicConfig(level=logging.DEBUG)
         self.logger = logging.getLogger(__name__)
+        print(f"[WebsiteEngine] Strict mode: {self.strict} (enforcement_level={action_config.get('enforcement_level', 'lenient')})", flush=True)
 
 
     def start_detection(self):
@@ -203,7 +207,7 @@ class WebsiteEngine:
                 "domain": self.current_domain,
                 "window_title": self.current_window_title,
                 "policy": self.current_site_policy,
-                "action_taken": "notified" if is_violation else "ignored",
+                "action_taken": ("blocked" if self.strict else "notified") if is_violation else "ignored",
                 "notification": {
                     "sent": is_violation,
                     "ts": ts_close if is_violation else None
@@ -217,6 +221,33 @@ class WebsiteEngine:
         self.current_window_title = None
         self.current_site_ts_open = None
         self.current_site_policy = None
+    
+    def _block_website(self, domain):
+        print(f"[WebsiteEngine] Blocking website: {domain}", flush=True)
+        # 1. Close the active tab
+        try:
+            if PLATFORM == "Windows":
+                import win32api, win32con
+                win32api.keybd_event(win32con.VK_CONTROL, 0, 0, 0)
+                win32api.keybd_event(ord('W'), 0, 0, 0)
+                win32api.keybd_event(ord('W'), 0, win32con.KEYEVENTF_KEYUP, 0)
+                win32api.keybd_event(win32con.VK_CONTROL, 0, win32con.KEYEVENTF_KEYUP, 0)
+            elif PLATFORM == "Darwin":
+                subprocess.run(
+                    ['osascript', '-e',
+                    'tell application "System Events" to keystroke "w" using {command down}'],
+                    check=False
+                )
+            else:
+                subprocess.run(["xdotool", "key", "ctrl+w"], check=False)
+        except Exception as e:
+            print(f"[WebsiteEngine] Tab close failed: {e}", flush=True)
+        
+        #2. Open the blocked page
+        import urllib.parse
+        params = urllib.parse.urlencode({"site": domain, "config": self.config_name})
+        webbrowser.open(f"http://localhost:12039/blocked?{params}")
+
 
     def _detection_loop(self):
         """Main detection loop - runs in separate thread """
@@ -249,6 +280,9 @@ class WebsiteEngine:
                                 f"in window '{window_title}'"
                             )
                             self.alerter.alert("Blocked Website Detected", f"{detected_domain} is not allowed")
+                            if self.strict:    
+                                self._block_website(detected_domain)
+
                 else:
                     # Same site still in foreground — update window title in case it changed
                     if self.current_domain:
